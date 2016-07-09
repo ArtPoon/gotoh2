@@ -3,9 +3,10 @@ import numpy as np
 from glob import glob
 import os
 import re
+import sys
 
 class Aligner():
-    def __init__(self, model_path='models/'):
+    def __init__(self, model_path='gotoh2/models/'):
         # default (not very useful) settings
         self.gap_open_penalty = 1
         self.gap_extend_penalty = 1
@@ -14,6 +15,7 @@ class Aligner():
         # read models from files
         self.models = {}
         files = glob(model_path+'*.csv')
+
         for f in files:
             _, filename = os.path.split(f)
             model_name = filename.split('.')[0]

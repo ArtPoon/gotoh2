@@ -43,13 +43,14 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
         return NULL;
     }
 
-    /*
+
     // transfer arguments to struct
     my_settings.gap_open_penalty = gop;
     my_settings.gap_extend_penalty = gep;
     my_settings.is_global = (is_global > 0);
     my_settings.alphabet_length = (int) strlen(alphabet);
     my_settings.alphabet = alphabet;
+
 
     // parse NumPy array
     ndarray = PyArray_FROM_OTF(obj, NPY_DOUBLE, NPY_IN_ARRAY);
@@ -60,10 +61,8 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
 
     // call align function
     my_output = align(seq1, seq2, my_settings);
-    */
 
-    //PyObject * retval = Py_BuildValue("ssi", my_output.aligned_seq1, my_output.aligned_seq2, my_output.alignment_score);
-    PyObject * retval = Py_BuildValue("ssi", seq1, seq2, 0);
+    PyObject * retval = Py_BuildValue("ssi", my_output.aligned_seq1, my_output.aligned_seq2, my_output.alignment_score);
     return retval;
 }
 
@@ -78,5 +77,6 @@ static PyMethodDef AlignmentMethods [] =
 
 PyMODINIT_FUNC initCgotoh2 (void) {
     (void) Py_InitModule("Cgotoh2", AlignmentMethods);
+    import_array();  // required to avoid a segmentation fault
 }
 
