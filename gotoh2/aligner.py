@@ -4,7 +4,7 @@ from glob import glob
 import os
 import re
 
-class Gotoh2():
+class Aligner():
     def __init__(self, model_path='models/'):
         # default (not very useful) settings
         self.gap_open_penalty = 1

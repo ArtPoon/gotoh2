@@ -1,14 +1,11 @@
 from setuptools import setup, Extension
 import numpy as np
 
-gotoh2 = Extension('Cgotoh2',
-                    sources = ['_gotoh2.c'],
-                    define_macros=[('__PYTHON__', None)])
-
-setup (name = 'Cgotoh2',
+setup (name = 'gotoh2',
        version = '0.1',
        description = "C implementation of Gotoh pairwise alignment algorithm to be wrapped in Python",
-       ext_modules = [gotoh2],
+       py_modules = ['gotoh2.aligner'],
+       ext_modules = [Extension('gotoh2.Cgotoh2', sources = ['gotoh2/src/_gotoh2.c'])],
        include_dirs = [np.get_include()],
        zip_safe = False  #avoid headache with permissions on ~/.python-eggs
 )
