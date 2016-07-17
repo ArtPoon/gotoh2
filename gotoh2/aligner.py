@@ -40,7 +40,7 @@ class Aligner():
         rows = []
         for line in handle:
             rows.append(map(int, line.strip('\n').split(',')))
-        return np.matrix(rows), alphabet
+        return np.array(rows, dtype=np.int32), alphabet
 
     def clean_sequence(self, seq):
         # replace all non-alphabet characters with ambiguous symbol

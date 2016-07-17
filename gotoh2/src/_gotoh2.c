@@ -9,7 +9,7 @@ struct align_settings {
     int u;  // gap extension penalty
     int l;  // alphabet length
     const char * alphabet;
-    double * d;  // weighting function
+    int * d;  // weighting function
 };
 
 struct align_output {
@@ -33,7 +33,6 @@ int * encode_sequence (const char * seq, int * map) {
     int * encoded[seqlen];
     for (int i=0; i < seqlen; i++) {
         encoded[i] = map[(int)seq[i]];
-        fprintf(stdout, "%d\n", encoded[i]);
     }
 }
 
@@ -41,19 +40,19 @@ int * encode_sequence (const char * seq, int * map) {
 
 // main wrapper function
 struct align_output align(const char * seq1, const char * seq2, struct align_settings m) {
+    int map[256] = {0};
     struct align_output o;
 
     // 1. convert sequences into integer indices into alphabet
-    int * map[256];
     map_ascii_to_alphabet(map, m.alphabet);
-
-    for (int i = 0; i < 256; i++) {
-        fprintf (stdout, "%d %d\n", i, map[i]);
-    }
 
     int * sA = encode_sequence(seq1, map);
     int * sB = encode_sequence(seq2, map);
 
+    // 2. generate D matrix
+
+
+    // X. decode aligned integer sequences into alphabet sequences
     o.aligned_seq1 = seq1;
     o.aligned_seq2 = seq2;
     o.alignment_score = 0;
@@ -87,11 +86,11 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
     fprintf (stdout, "my_settings.alphabet = %s\n", my_settings.alphabet);
 
     // parse NumPy array
-    ndarray = PyArray_FROM_OTF(obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    ndarray = PyArray_FROM_OTF(obj, NPY_INT, NPY_IN_ARRAY);
     if (ndarray == NULL) {
         return NULL;
     }
-    my_settings.d = (double *) PyArray_DATA(ndarray);
+    my_settings.d = (int *) PyArray_DATA(ndarray);
 
     /*
      // display contents of matrix
