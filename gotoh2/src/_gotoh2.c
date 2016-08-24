@@ -19,6 +19,22 @@ struct align_output {
 };
 
 
+int min2(a, b) {
+    if (a < b) {
+        return (a);
+    }
+    return (b);
+}
+
+int min3(a, b, c) {
+    if (a < b) {
+        return min2(a, c);
+    }
+    return min2(b, c);
+}
+
+
+
 void map_ascii_to_alphabet (int * map, const char * alphabet) {
     for (int i = 0; i < 256; i++) {
         map[i] = -1;  // if left at -1, indicates non-alphabet character in sequence
@@ -36,55 +52,76 @@ void encode_sequence (const char * seq, int * map, int * encoded) {
 }
 
 
-void populate_D_matrix(int * d, int nrows, int ncols, struct align_settings s) {
+void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
+                       int * a, int * b) {
     int max_dim = nrows;
+    int infty = 1000000;
     if (nrows < ncols) {
         max_dim = ncols;
     }
 
     // D(0,0) = 0
-    d[0] = 0;
+    D[0] = 0;
 
     // linearize cache matrices so that (m,n) = (m * ncols + n)
-    int p[nrows*ncols];
-    int q[nrows*ncols];
+    int p[nrows*ncols];  // min within column
+    int q[nrows*ncols];  // min within row
 
-    // initialize left column
+    // initialize left column (n = 0)
     for (int m = 0; m < nrows; m++) {
-        d[m*ncols] = p[m*ncols] = s.is_global ? (s.v+s.u*m) : 0;
+        q[m*ncols] = infty;
+        D[m*ncols] = p[m*ncols] = set.is_global ? (set.v+set.u*m) : 0;
     }
 
-    // initialize the top row
+    // initialize the top row (m = 0)
     for (int n = 0; n < ncols; n++) {
-        d[n] = q[n] = s.is_global ? (s.v+s.u*n) : 0;
+        p[n] = infty;
+        D[n] = q[n] = set.is_global ? (set.v+set.u*n) : 0;
     }
 
     // iterate through D matrix by diagonals
-    // http://stackoverflow.com/questions/1779199/traverse-matrix-in-diagonal-strips
-    for (int z, slice=0; slice<(2*max_dim-1); slice++) {
-        z = (slice < max_dim) ? 0 : (slice-max_dim+1);  // which side are we on?
-        for (int j=z; j<=slice-z; )
-    }
+    for (int here, up, left, diag, n, m, offset=1; offset<ncols+nrows; offset++) {
+        n = offset;
+        for (m = 1; m < nrows; m++) {
+            here = m*ncols + n;
+            up = here - ncols;  // (m-1)*ncols + n
+            left = here - 1;  // m*ncols + (n-1)
+            diag = up - 1;  // (m-1)*ncols + (n-1)
 
-    for (int m = 1; m < nrows; m++) {
-        for (int n = 1; n < ncols; n++) {
-            d[m*ncols+n] = 0;
+            if (n < ncols) {
+                p[here] = min2(D[up] + set.u+set.v, p[up] + set.u);
+                q[here] = min2(D[left] + set.u+set.v, q[left] + set.u);
+                D[here] = min3(D[diag] - set.d[a[m-1]*set.l+b[n-1]],
+                               p[here],
+                               q[here]);
+            }
+
+            n -= 1;
+            if (n == 0) {
+                break;
+            }
         }
     }
-
 }
 
+
+void traceback(int * D, const char * seq1, const char * seq2, char * aligned1, char * aligned2) {
+    // return score?
+    
+}
 
 // main wrapper function
 struct align_output align(const char * seq1, const char * seq2, struct align_settings m) {
     int map[256] = {0};
-    int l1 = (int) strlen(seq1);
+    int l1 = (int) strlen(seq1);  // sequence lengths
     int l2 = (int) strlen(seq2);
-    int sA[l1];
+    int sA[l1];  // integer-encoded sequences
     int sB[l2];
 
-    int d[(l1+1)*(l2+1)];
+    int D[(l1+1)*(l2+1)];
     struct align_output o;
+    char aligned1[l1+l2];  // allocate enough space for completely non-overlapping sequences
+    char aligned2[l1+l2];
 
     // 1. convert sequences into integer indices into alphabet
     map_ascii_to_alphabet(map, m.alphabet);
@@ -93,14 +130,18 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     encode_sequence(seq2, map, sB);
 
     // 2. generate D matrix
-    populate_D_matrix(d, l1+1, l2+1, m);
+    populate_D_matrix(D, l1+1, l2+1, m, sA, sB);
 
+    // DEBUGGING - print D matrix to screen
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", d[i*(l2+1)+j]);
+            fprintf(stdout, "%d ", D[i*(l2+1)+j]);
         }
         fprintf(stdout, "\n");
     }
+
+    // TODO: 3. traceback
+    traceback(D, seq1, seq2, aligned1, aligned2);
 
     // TODO: decode aligned integer sequences into alphabet sequences
     o.aligned_seq1 = seq1;
