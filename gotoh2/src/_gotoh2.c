@@ -53,7 +53,7 @@ void encode_sequence (const char * seq, int * map, int * encoded) {
 
 
 void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
-                       int * a, int * b) {
+                       int * a, int * b, int * bits) {
     int max_dim = nrows;
     int infty = 1000000;
     if (nrows < ncols) {
@@ -71,7 +71,12 @@ void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
     for (int m = 0; m < nrows; m++) {
         q[m*ncols] = infty;
         D[m*ncols] = p[m*ncols] = set.is_global ? (set.v+set.u*m) : 0;
+        // use a nested loop to zero out the bits matrix
+        for (int n = 0; n < ncols; n++) {
+            bits[m*ncols + n] = 0;
+        }
     }
+    bits[nrows*ncols-1] = 4;  // set c(l1+1, l2+1) = 1, i.e., 0000100
 
     // initialize the top row (m = 0)
     for (int n = 0; n < ncols; n++) {
@@ -90,10 +95,29 @@ void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
 
             if (n < ncols) {
                 p[here] = min2(D[up] + set.u+set.v, p[up] + set.u);
+                if (p[here] == p[up] + set.u) {
+                    bits[up] |= 8;  // set bit d(m-1,n) == 1
+                } else {
+                    bits[up] |= 16;  // set bit e(m-1,n) == 1
+                }
+
                 q[here] = min2(D[left] + set.u+set.v, q[left] + set.u);
+                if (q[here] == q[left] + set.u) {
+                    bits[left] |= 32;  // set bit f(m,n-1) == 1
+                } else {
+                    bits[left] |= 64;  // set bit g(m,n-1) == 1
+                }
+
                 D[here] = min3(D[diag] - set.d[a[m-1]*set.l+b[n-1]],
                                p[here],
                                q[here]);
+                if (D[here] == p[here]) {
+                    bits[here] |= 1;  // set bit a(m,n) to 1
+                } else if (D[here] == q[here]) {
+                    bits[here] |= 2;  // set bit b(m,n) to 1
+                } else {
+                    bits[here] |= 4;  // set bit c(m,n) to 1
+                }
             }
 
             n -= 1;
@@ -106,8 +130,9 @@ void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
 
 
 void traceback(int * D, const char * seq1, const char * seq2, char * aligned1, char * aligned2) {
-    // return score?
-    
+    // try to implement Altschul-Erickson traceback
+
+
 }
 
 // main wrapper function
@@ -119,6 +144,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     int sB[l2];
 
     int D[(l1+1)*(l2+1)];
+    int bits[(l1+1)*(l2+1)];  // stores Altschul and Erickson's seven traceback bits as integer
     struct align_output o;
     char aligned1[l1+l2];  // allocate enough space for completely non-overlapping sequences
     char aligned2[l1+l2];
@@ -130,7 +156,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     encode_sequence(seq2, map, sB);
 
     // 2. generate D matrix
-    populate_D_matrix(D, l1+1, l2+1, m, sA, sB);
+    populate_D_matrix(D, l1+1, l2+1, m, sA, sB, bits);
 
     // DEBUGGING - print D matrix to screen
     for (int i=0; i<l1+1; i++) {
