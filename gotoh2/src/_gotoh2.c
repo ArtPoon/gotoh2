@@ -129,6 +129,79 @@ void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
 }
 
 
+void edge_assignment(int * bits, int nrows, int ncols) {
+    // switching index integers from (m,n) to (i,j) because that's what
+    // Altschul and Erickson use and it's easier to follow their pseudocode this way
+    // steps 8 through 11 inclusive
+    for (int here, down, right, diag, i = nrows-1; i >= 0; i--) {
+        for (int j = ncols-1; j >= 0; j--) {
+            here = i*ncols + j;
+            down = here + ncols;  // (i+1)*ncols + j
+            right = here + 1;  // i*ncols + (j+1)
+            diag = down + 1;  // (i+1)*ncols + (j+1)
+
+            if (
+                (!(bits[down]&1) || !(bits[here]&(1<<4))) &&  // a[i+1,j] is 0  OR  e[i,j] is 0
+                (!(bits[right]&(1<<1)) || !(bits[here]&(1<<6))) &&  // b[i,j+1] is 0  OR  g[i,j] is 0
+                !(bits[diag]&(1<<2))  // c[i+i,j+1] is 0
+            ) {
+                bits[here] |= 1;  // set a[i,j] to 1
+                bits[here] |= 2;  // set b[i,j] to 1
+                bits[here] |= 4;  // set c[i,j] to 1
+            }
+
+            // if a[i+1,j] == b[i,j+1] == c[i+1,j+1] == 0, skip steps 10 and 11
+            if (!(bits[down]&1) && !(bits[right]&(1<<1)) && !(bits[diag]&(1<<2))) {
+                // step 10
+                if (bits[down]&1 && bits[here]&(1<<3)) {  // if a[i+1,j] is 1 and d[i,j] is 1
+                    // set d[i+1,j] to 1-e[i,j]
+                    if (bits[here]&(1<<4)) {
+                        bits[down] = bits[down] & ~(1<<3);
+                    } else {
+                        bits[down] |= 8;
+                    }
+
+                    // set e[i.j] to 1-a[i,j]
+                    if (bits[here]&1) {
+                        bits[here] = bits[here] & ~(1<<4);
+                    } else {
+                        bits[here] |= 16;
+                    }
+
+                    // set a[i,j] to 1
+                    bits[here] |= 1;
+                } else {
+                    // otherwise, set d[i+1,j] and e[i,j] to 0
+                    bits[down] = bits[down] & ~(1<<3);
+                    bits[here] = bits[here] & ~(1<<4);
+                }
+
+                // step 11
+                if ((bits[right]&2) && (bits[here]&32)) {  // if b[i,j+1] is 1  AND  f[i,j] is 1
+                    // set f[i,j+1] to 1-g[i,j]
+                    if (bits[here]&(1<<6)) {
+                        bits[right] = bits[right] & ~(1<<5);
+                    } else {
+                        bits[right] |= 32;
+                    }
+                    // set g[i,j] to 1-b[i,j]
+                    if (bits[here]&(1<<1)) {
+                        bits[here] = bits[here] & ~(1<<6);
+                    } else {
+                        bits[here] |= 64;
+                    }
+                    // set b[i,j] to 1
+                    bits[here] |= 2;
+                } else {
+                    // otherwise set f[i,j+1] and g[i,j] to 0
+                    bits[right] = bits[right] & ~(1<<5);
+                    bits[here] = bits[here] & ~(1<<6);
+                }
+            }
+        }
+    }
+}
+
 void traceback(int * D, const char * seq1, const char * seq2, char * aligned1, char * aligned2) {
     // try to implement Altschul-Erickson traceback
 
