@@ -203,7 +203,7 @@ void edge_assignment(int * bits, int nrows, int ncols) {
 }
 
 void traceback(int * D, const char * seq1, const char * seq2, char * aligned1, char * aligned2) {
-    // try to implement Altschul-Erickson traceback
+    // return all pairwise alignments given edge assignment
 
 
 }
