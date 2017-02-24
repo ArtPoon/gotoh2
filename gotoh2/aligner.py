@@ -1,12 +1,11 @@
 import Cgotoh2
 import numpy as np
-from glob import glob
 import os
 import re
-import sys
+import pkg_resources as pkgres
 
 class Aligner():
-    def __init__(self, model_path='gotoh2/models/'):
+    def __init__(self):
         # default (not very useful) settings
         self.gap_open_penalty = 1
         self.gap_extend_penalty = 1
@@ -14,12 +13,11 @@ class Aligner():
 
         # read models from files
         self.models = {}
-        files = glob(model_path+'*.csv')
+        files = pkgres.resource_listdir('gotoh2', 'models')
 
         for f in files:
-            _, filename = os.path.split(f)
-            model_name = filename.split('.')[0]
-            with open(f, 'rU') as handle:
+            model_name = f.replace('.csv', '')
+            with pkgres.resource_stream('gotoh2', '/'.join(['models', f])) as handle:
                 mx, alpha = self.read_matrix_from_csv(handle)
                 self.models.update({model_name: (mx, alpha)})
 

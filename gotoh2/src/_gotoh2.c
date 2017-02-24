@@ -36,6 +36,8 @@ int min3(a, b, c) {
 
 
 void map_ascii_to_alphabet (int * map, const char * alphabet) {
+    // map: integer vector that maps from ASCII into alphabet string index
+    // alphabet: string to be indexed; e.g., "ACGT"
     for (int i = 0; i < 256; i++) {
         map[i] = -1;  // if left at -1, indicates non-alphabet character in sequence
     }
@@ -45,6 +47,9 @@ void map_ascii_to_alphabet (int * map, const char * alphabet) {
 }
 
 void encode_sequence (const char * seq, int * map, int * encoded) {
+    // seq: string to convert into integer indices
+    // map: return value from map_ascii_to_alphabet()
+    // encoded: container for return value
     int seqlen = (int) strlen(seq);
     for (int i=0; i < seqlen; i++) {
         encoded[i] = map[(int)seq[i]];
@@ -52,6 +57,8 @@ void encode_sequence (const char * seq, int * map, int * encoded) {
 }
 
 
+// The D matrix has (m) rows and (n) columns for two sequences of lengths
+// m and n, respectively.
 void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
                        int * a, int * b, int * bits) {
     int max_dim = nrows;
@@ -129,10 +136,14 @@ void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
 }
 
 
+// steps 8 through 11 inclusive of Altschul-Erickson algorithm
 void edge_assignment(int * bits, int nrows, int ncols) {
+    // bits: linearized matrix storing traceback bits
+    //    e.g.,   0010010 = 18
+    //            gfedcba
+
     // switching index integers from (m,n) to (i,j) because that's what
     // Altschul and Erickson use and it's easier to follow their pseudocode this way
-    // steps 8 through 11 inclusive
     for (int here, down, right, diag, i = nrows-1; i >= 0; i--) {
         for (int j = ncols-1; j >= 0; j--) {
             here = i*ncols + j;
@@ -202,10 +213,32 @@ void edge_assignment(int * bits, int nrows, int ncols) {
     }
 }
 
-void traceback(int * D, const char * seq1, const char * seq2, char * aligned1, char * aligned2) {
+void traceback(int * bits, int nrows, int ncols,
+               const char * seq1, const char * seq2, char * aligned1, char * aligned2) {
     // return all pairwise alignments given edge assignment
-
-
+    // for now, just return one
+    int i = nrows-1,
+        j = ncols-1,
+        here;
+    while (i>0 && j>0) {
+        here = i*ncols + j;
+        if (bits[here]&1) {  // a[i,j]==1
+            // an optimal path uses V(i,j)
+            fprintf(stdout, "%d %d V\n", i, j);
+            i--;
+        }
+        if (bits[here]&(1<<1)) {  // b[i,j]==1
+            // an optimal path uses H(i,j)
+            fprintf(stdout, "%d %d H\n", i, j);
+            j--;
+        }
+        if (bits[here]&(1<<2)) {
+            // an optimal path uses H(i,j)
+            fprintf(stdout, "%d %d D\n", i, j);
+            i--;
+            j--;
+        }
+    }
 }
 
 // main wrapper function
@@ -239,8 +272,10 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
         fprintf(stdout, "\n");
     }
 
+    edge_assignment(bits, l1+1, l2+1);
+
     // TODO: 3. traceback
-    traceback(D, seq1, seq2, aligned1, aligned2);
+    traceback(bits, l1+1, l2+1, seq1, seq2, aligned1, aligned2);
 
     // TODO: decode aligned integer sequences into alphabet sequences
     o.aligned_seq1 = seq1;
