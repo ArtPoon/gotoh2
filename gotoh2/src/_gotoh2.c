@@ -2,6 +2,7 @@
 #include "numpy/arrayobject.h"
 #include <string.h>
 #include <stdio.h>
+#include <check.h>
 
 struct align_settings {
     int is_global;
@@ -59,25 +60,27 @@ void encode_sequence (const char * seq, int * map, int * encoded) {
 
 // The D matrix has (m) rows and (n) columns for two sequences of lengths
 // m and n, respectively.
-void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
-                       int * a, int * b, int * bits) {
+void initialize(int * R, int nrows, int ncols, struct align_settings set, int * bits) {
     int max_dim = nrows;
     int infty = 1000000;
     if (nrows < ncols) {
         max_dim = ncols;
     }
 
-    // D(0,0) = 0
-    D[0] = 0;
-
     // linearize cache matrices so that (m,n) = (m * ncols + n)
     int p[nrows*ncols];  // min within column
     int q[nrows*ncols];  // min within row
 
+    // initialize the top row (m = 0)
+    for (int j = 0; j < ncols; j++) {
+        p[j] = infty;  // set P_0,j to +Inf
+        R[n] = q[n] = set.is_global ? (set.v+set.u*j) : 0;
+    }
+
     // initialize left column (n = 0)
-    for (int m = 0; m < nrows; m++) {
-        q[m*ncols] = infty;
-        D[m*ncols] = p[m*ncols] = set.is_global ? (set.v+set.u*m) : 0;
+    for (int i = 0; i < nrows; i++) {
+        q[i*ncols] = infty;  // set Q_i,0 to +Inf
+        R[i*ncols] = set.is_global ? (set.v+set.u*i) : 0;
         // use a nested loop to zero out the bits matrix
         for (int n = 0; n < ncols; n++) {
             bits[m*ncols + n] = 0;
@@ -85,39 +88,54 @@ void populate_D_matrix(int * D, int nrows, int ncols, struct align_settings set,
     }
     bits[nrows*ncols-1] = 4;  // set c(l1+1, l2+1) = 1, i.e., 0000100
 
-    // initialize the top row (m = 0)
-    for (int n = 0; n < ncols; n++) {
-        p[n] = infty;
-        D[n] = q[n] = set.is_global ? (set.v+set.u*n) : 0;
-    }
+    R[0] = 0;  // set R_0,0 to 0
+}
 
-    // iterate through D matrix by diagonals
-    for (int here, up, left, diag, n, m, offset=1; offset<ncols+nrows; offset++) {
-        n = offset;
-        for (m = 1; m < nrows; m++) {
-            here = m*ncols + n;
-            up = here - ncols;  // (m-1)*ncols + n
-            left = here - 1;  // m*ncols + (n-1)
-            diag = up - 1;  // (m-1)*ncols + (n-1)
 
-            if (n < ncols) {
-                p[here] = min2(D[up] + set.u+set.v, p[up] + set.u);
-                if (p[here] == p[up] + set.u) {
-                    bits[up] |= 8;  // set bit d(m-1,n) == 1
-                } else {
-                    bits[up] |= 16;  // set bit e(m-1,n) == 1
+void cost_assignment(int * R, int nrows, int ncols, int * a, int * b, struct align_settings set, int * bits)
+{
+    int i, j;  // row and column counters
+    int here, up, left, diag;  // cache indices for linearized matrix
+
+    // iterate through cost matrix by diagonals
+    for (int offset=1; offset<ncols+nrows; offset++) {
+        j = offset;
+        for (i = 1; i < nrows; i++) {
+            here = i*ncols + j;
+            up = here - ncols;  // (i-1)*ncols + j
+            left = here - 1;  // i*ncols + (j-1)
+            diag = up - 1;  // (i-1)*ncols + (j-1)
+
+            if (j < ncols) {
+                p[here] = set.u + min2(R[up]+set.v, p[up]);
+
+                // can cost P_{i,j} be achieved by edge V_{i-1,j}?
+                if (p[here] == p[up]+set.u) {
+                    bits[up] |= 8;  // set bit d(i-1,j) == 1
                 }
 
-                q[here] = min2(D[left] + set.u+set.v, q[left] + set.u);
-                if (q[here] == q[left] + set.u) {
-                    bits[left] |= 32;  // set bit f(m,n-1) == 1
-                } else {
+                // can P_{i,j} be achieved without using edge V_{i-1,j}?
+                if (p[here] == R[up]+set.u+set.v) {
+                    bits[up] |= 16;  // set bit e(i-1,j) == 1
+                }
+
+                // find minimum cost of path ending at i,j and using edge H_{i,j}
+                q[here] = set.u + min2(R[left]+set.v, q[left]);
+
+                // can cost Q_{i,j} be achieved using edge H_{i,j-1}?
+                if (q[here] == q[left]+set.u) {
+                    bits[left] |= 32;  // set bit f(i,j-1) == 1
+                }
+                if (q[here] == R[left]+set.u+set.v) {
                     bits[left] |= 64;  // set bit g(m,n-1) == 1
                 }
 
-                D[here] = min3(D[diag] - set.d[a[m-1]*set.l+b[n-1]],
+                // find minimum cost of path ending at N_{i,j}
+                R[here] = min3(R[diag] - set.d[a[i-1]*set.l+b[j-1]],
                                p[here],
                                q[here]);
+
+                // can R_{i,j} be achieved using edges V_{i,j}, H_{i,j} or D_{i,j}?
                 if (D[here] == p[here]) {
                     bits[here] |= 1;  // set bit a(m,n) to 1
                 } else if (D[here] == q[here]) {
@@ -227,16 +245,19 @@ void traceback(int * bits, int nrows, int ncols,
             fprintf(stdout, "%d %d V\n", i, j);
             i--;
         }
-        if (bits[here]&(1<<1)) {  // b[i,j]==1
+        else if (bits[here]&(1<<1)) {  // b[i,j]==1
             // an optimal path uses H(i,j)
             fprintf(stdout, "%d %d H\n", i, j);
             j--;
         }
-        if (bits[here]&(1<<2)) {
+        else if (bits[here]&(1<<2)) {
             // an optimal path uses H(i,j)
             fprintf(stdout, "%d %d D\n", i, j);
             i--;
             j--;
+        }
+        else {
+            fprintf(stdout, "uh oh, no optimal path?");
         }
     }
 }
