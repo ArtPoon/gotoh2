@@ -2,7 +2,7 @@
 #include "numpy/arrayobject.h"
 #include <string.h>
 #include <stdio.h>
-#include <check.h>
+//#include <check.h>
 
 struct align_settings {
     int is_global;
@@ -58,32 +58,24 @@ void encode_sequence (const char * seq, int * map, int * encoded) {
 }
 
 
-// The D matrix has (m) rows and (n) columns for two sequences of lengths
-// m and n, respectively.
-void initialize(int * R, int nrows, int ncols, struct align_settings set, int * bits) {
-    int max_dim = nrows;
-    int infty = 1000000;
-    if (nrows < ncols) {
-        max_dim = ncols;
-    }
 
-    // linearize cache matrices so that (m,n) = (m * ncols + n)
-    int p[nrows*ncols];  // min within column
-    int q[nrows*ncols];  // min within row
+void initialize(int * R, int * p, int * q, int nrows, int ncols, struct align_settings set, int * bits) {
+    int i, j;  // row and column counters
+    int infty = 1000000;
 
     // initialize the top row (m = 0)
-    for (int j = 0; j < ncols; j++) {
+    for (j = 0; j < ncols; j++) {
         p[j] = infty;  // set P_0,j to +Inf
-        R[n] = q[n] = set.is_global ? (set.v+set.u*j) : 0;
+        R[j] = q[j] = set.is_global ? (set.v+set.u*j) : 0;
     }
 
     // initialize left column (n = 0)
-    for (int i = 0; i < nrows; i++) {
+    for (i = 0; i < nrows; i++) {
         q[i*ncols] = infty;  // set Q_i,0 to +Inf
         R[i*ncols] = set.is_global ? (set.v+set.u*i) : 0;
         // use a nested loop to zero out the bits matrix
         for (int n = 0; n < ncols; n++) {
-            bits[m*ncols + n] = 0;
+            bits[i*ncols + j] = 0;
         }
     }
     bits[nrows*ncols-1] = 4;  // set c(l1+1, l2+1) = 1, i.e., 0000100
@@ -92,10 +84,15 @@ void initialize(int * R, int nrows, int ncols, struct align_settings set, int * 
 }
 
 
-void cost_assignment(int * R, int nrows, int ncols, int * a, int * b, struct align_settings set, int * bits)
-{
+// The D matrix has (m) rows and (n) columns for two sequences of lengths
+// m and n, respectively.
+void cost_assignment(int * R, int * p, int * q, int nrows, int ncols, int * a, int * b, struct align_settings set, int * bits) {
     int i, j;  // row and column counters
     int here, up, left, diag;  // cache indices for linearized matrix
+    int max_dim = nrows;
+    if (nrows < ncols) {
+        max_dim = ncols;
+    }
 
     // iterate through cost matrix by diagonals
     for (int offset=1; offset<ncols+nrows; offset++) {
@@ -136,17 +133,19 @@ void cost_assignment(int * R, int nrows, int ncols, int * a, int * b, struct ali
                                q[here]);
 
                 // can R_{i,j} be achieved using edges V_{i,j}, H_{i,j} or D_{i,j}?
-                if (D[here] == p[here]) {
+                if (R[here] == p[here]) {
                     bits[here] |= 1;  // set bit a(m,n) to 1
-                } else if (D[here] == q[here]) {
+                }
+                if (R[here] == q[here]) {
                     bits[here] |= 2;  // set bit b(m,n) to 1
-                } else {
+                }
+                if (R[here] == R[diag] - set.d[a[i-1]*set.l+b[j-1]]){
                     bits[here] |= 4;  // set bit c(m,n) to 1
                 }
             }
 
-            n -= 1;
-            if (n == 0) {
+            j -= 1;
+            if (j == 0) {
                 break;
             }
         }
@@ -271,6 +270,9 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     int sB[l2];
 
     int D[(l1+1)*(l2+1)];
+    int P[(l1+1)*(l2+1)];
+    int Q[(l1+1)*(l2+1)];
+
     int bits[(l1+1)*(l2+1)];  // stores Altschul and Erickson's seven traceback bits as integer
     struct align_output o;
     char aligned1[l1+l2];  // allocate enough space for completely non-overlapping sequences
@@ -283,7 +285,16 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     encode_sequence(seq2, map, sB);
 
     // 2. generate D matrix
-    populate_D_matrix(D, l1+1, l2+1, m, sA, sB, bits);
+    initialize(D, P, Q, l1+1, l2+1, m, bits);
+
+    for (int i=0; i<l1+1; i++) {
+        for (int j=0; j<l2+1; j++) {
+            fprintf(stdout, "%d ", D[i*(l2+1)+j]);
+        }
+        fprintf(stdout, "\n");
+    }
+
+    cost_assignment(D, P, Q, l1+1, l2+1, sA, sB, m, bits);
 
     // DEBUGGING - print D matrix to screen
     for (int i=0; i<l1+1; i++) {
