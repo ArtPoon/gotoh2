@@ -2,6 +2,7 @@
 #include "numpy/arrayobject.h"
 #include <string.h>
 #include <stdio.h>
+#include <limits.h>
 
 
 struct align_settings {
@@ -19,14 +20,14 @@ struct align_output {
     int alignment_score;
 };
 
-int min2(a, b) {
+int min2(int a, int b) {
     if (a < b) {
         return (a);
     }
     return (b);
 }
 
-int min3(a, b, c) {
+int min3(int a, int b, int c) {
     if (a < b) {
         return min2(a, c);
     }
@@ -60,7 +61,7 @@ void encode_sequence (const char * seq, int * map, int * encoded) {
 
 void initialize(int * R, int * p, int * q, int nrows, int ncols, struct align_settings set, int * bits) {
     int i, j;  // row and column counters
-    int infty = 1000000;
+    int infty = INT_MAX;  // maximum integer value from limits.h
 
     // initialize the top row (m = 0)
     for (j = 0; j < ncols; j++) {
@@ -73,7 +74,7 @@ void initialize(int * R, int * p, int * q, int nrows, int ncols, struct align_se
         q[i*ncols] = infty;  // set Q_i,0 to +Inf
         R[i*ncols] = set.is_global ? (set.v+set.u*i) : 0;
         // use a nested loop to zero out the bits matrix
-        for (int n = 0; n < ncols; n++) {
+        for (j = 0; j < ncols; j++) {
             bits[i*ncols + j] = 0;
         }
     }
@@ -83,8 +84,8 @@ void initialize(int * R, int * p, int * q, int nrows, int ncols, struct align_se
 }
 
 
-// The D matrix has (m) rows and (n) columns for two sequences of lengths
-// m and n, respectively.
+// The D matrix has (m+1) rows and (n+1) columns for two sequences of lengths
+// m and n, respectively.  Note I'm switching notation from D to R.
 void cost_assignment(int * R, int * p, int * q, int nrows, int ncols, int * a, int * b, struct align_settings set, int * bits) {
     int i, j;  // row and column counters
     int here, up, left, diag;  // cache indices for linearized matrix
@@ -123,7 +124,7 @@ void cost_assignment(int * R, int * p, int * q, int nrows, int ncols, int * a, i
                     bits[left] |= 32;  // set bit f(i,j-1) == 1
                 }
                 if (q[here] == R[left]+set.u+set.v) {
-                    bits[left] |= 64;  // set bit g(m,n-1) == 1
+                    bits[left] |= 64;  // set bit g(i,j-1) == 1
                 }
 
                 // find minimum cost of path ending at N_{i,j}
@@ -235,13 +236,16 @@ void traceback(int * bits, int nrows, int ncols,
                char * aligned1, char * aligned2) {
     // return all pairwise alignments given edge assignment
     // FIXME: for now, just return one path
-    int i = nrows-1,  // start from the lower right of our matrix
+    fprintf(stdout, "seq1: %s\nseq2: %s\n", seq1, seq2);
+
+    // start from the lower right of our matrix
+    int i = nrows-1,  // nrows is len(seq1)+1, adjust for zero-index
         j = ncols-1,
         here;
-
     int alen = 0;
 
     while (i>0 && j>0) {
+        fprintf(stdout, "aligned1: '%s'\n", aligned1);
         here = i*ncols + j;
         if (bits[here]&1) {  // a[i,j]==1
             // an optimal path uses V(i,j)
@@ -249,7 +253,7 @@ void traceback(int * bits, int nrows, int ncols,
             // append gap to aligned1
             aligned1[alen] = '-';
             // append base from seq2 to aligned2
-            aligned2[alen] = seq2[j];
+            aligned2[alen] = seq2[j-1];
 
             fprintf(stdout, "%d %d V\n", i, j);
             i--;
@@ -257,25 +261,33 @@ void traceback(int * bits, int nrows, int ncols,
         else if (bits[here]&(1<<1)) {  // b[i,j]==1
             // an optimal path uses H(i,j)
             fprintf(stdout, "%d %d H\n", i, j);
-            aligned1[alen] = seq1[i];
+            aligned1[alen] = seq1[i-1];
             aligned2[alen] = '-';
             j--;
         }
         else if (bits[here]&(1<<2)) {
             // an optimal path uses H(i,j)
             fprintf(stdout, "%d %d D\n", i, j);
-            aligned1[alen] = seq1[i];
-            aligned2[alen] = seq2[j];
+            aligned1[alen] = seq1[i-1];
+            aligned2[alen] = seq2[j-1];
             i--;
             j--;
         }
         else {
             fprintf(stdout, "uh oh, no optimal path?");
+            exit(1);
         }
         alen++;
-        fprintf(stdout, "alen: %d\n", alen);
     }
-    fprintf(stdout, "%s\n%s\n\n", aligned1, aligned2);
+    aligned1[alen] = '\0';
+    fprintf(stdout, "aligned1: %s\n", aligned1);
+
+    // reverse strings
+    char temp[alen];
+    for (i=0; i<alen; i++) {
+        fprintf(stdout, "%d %c\n", i, aligned1[i]);
+        temp[alen-i-1] = aligned1[i];
+    }
 }
 
 // main wrapper function
@@ -283,6 +295,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     int map[256] = {0};
     int l1 = (int) strlen(seq1);  // sequence lengths
     int l2 = (int) strlen(seq2);
+
     int sA[l1];  // integer-encoded sequences
     int sB[l2];
 
