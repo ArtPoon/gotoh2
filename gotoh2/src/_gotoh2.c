@@ -236,7 +236,6 @@ void traceback(int * bits, int nrows, int ncols,
                char * aligned1, char * aligned2) {
     // return all pairwise alignments given edge assignment
     // FIXME: for now, just return one path
-    fprintf(stdout, "seq1: %s\nseq2: %s\n", seq1, seq2);
 
     // start from the lower right of our matrix
     int i = nrows-1,  // nrows is len(seq1)+1, adjust for zero-index
@@ -245,29 +244,28 @@ void traceback(int * bits, int nrows, int ncols,
     int alen = 0;
 
     while (i>0 && j>0) {
-        fprintf(stdout, "aligned1: '%s'\n", aligned1);
         here = i*ncols + j;
         if (bits[here]&1) {  // a[i,j]==1
             // an optimal path uses V(i,j)
 
             // append gap to aligned1
-            aligned1[alen] = '-';
+            aligned2[alen] = '-';
             // append base from seq2 to aligned2
-            aligned2[alen] = seq2[j-1];
+            aligned1[alen] = seq1[i-1];
 
-            fprintf(stdout, "%d %d V\n", i, j);
+            fprintf(stdout, "%d %d %d V\n", alen, i, j);
             i--;
         }
         else if (bits[here]&(1<<1)) {  // b[i,j]==1
             // an optimal path uses H(i,j)
-            fprintf(stdout, "%d %d H\n", i, j);
-            aligned1[alen] = seq1[i-1];
-            aligned2[alen] = '-';
+            fprintf(stdout, "%d %d %d H\n", alen, i, j);
+            aligned2[alen] = seq2[j-1];
+            aligned1[alen] = '-';
             j--;
         }
         else if (bits[here]&(1<<2)) {
-            // an optimal path uses H(i,j)
-            fprintf(stdout, "%d %d D\n", i, j);
+            // an optimal path uses D(i,j)
+            fprintf(stdout, "%d %d %d D\n", alen, i, j);
             aligned1[alen] = seq1[i-1];
             aligned2[alen] = seq2[j-1];
             i--;
@@ -279,15 +277,17 @@ void traceback(int * bits, int nrows, int ncols,
         }
         alen++;
     }
-    aligned1[alen] = '\0';
-    fprintf(stdout, "aligned1: %s\n", aligned1);
+    aligned1[alen] = '\0';  // null terminators
+    aligned2[alen] = '\0';
 
-    // reverse strings
+    // reverse strings - FIXME: is there a more elegant way to do this?
     char temp[alen];
-    for (i=0; i<alen; i++) {
-        fprintf(stdout, "%d %c\n", i, aligned1[i]);
-        temp[alen-i-1] = aligned1[i];
-    }
+    for (i=0; i<alen; i++) temp[alen-i-1] = aligned1[i];
+    for (i=0; i<alen; i++) aligned1[i] = temp[i];
+
+    // do the same thing for aligned2
+    for (i=0; i<alen; i++) temp[alen-i-1] = aligned2[i];
+    for (i=0; i<alen; i++) aligned2[i] = temp[i];
 }
 
 // main wrapper function
@@ -326,6 +326,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
         }
         fprintf(stdout, "\n");
     }
+    fprintf(stdout, "\n");
 
     edge_assignment(bits, l1+1, l2+1);
 
@@ -333,9 +334,9 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     traceback(bits, l1+1, l2+1, seq1, seq2, aligned1, aligned2);
 
     // TODO: decode aligned integer sequences into alphabet sequences
-    o.aligned_seq1 = seq1;
-    o.aligned_seq2 = seq2;
-    o.alignment_score = 0;
+    o.aligned_seq1 = aligned1;
+    o.aligned_seq2 = aligned2;
+    o.alignment_score = -1 * D[(l1+1)*(l2+1)-1];  // FIXME: works for global only!
     return o;
 }
 
