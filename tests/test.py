@@ -4,7 +4,7 @@ from gotoh2.aligner import Aligner
 class TestAligner(unittest.TestCase):
     def setUp(self):
         self.g2 = Aligner()
-        self.g2.gap_open_penalty = 5
+        self.g2.gap_open_penalty = 2
 
 class TestAlignerSimpleGlobal(TestAligner):
     def runTest(self):
@@ -13,7 +13,7 @@ class TestAlignerSimpleGlobal(TestAligner):
         self.assertEqual(expected, aligned_ref)
         expected = 'AC-T'
         self.assertEqual(expected, aligned_query)
-        expected = 5+5+(-5-1)+5
+        expected = 5+5+(-2-1)+5
         self.assertEqual(expected, aligned_score)
 
 class TestAlignerSimpleLocal(TestAligner):
