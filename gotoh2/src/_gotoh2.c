@@ -21,7 +21,7 @@ struct align_output {
 };
 
 int min2(int a, int b) {
-    if (a < b) {
+    if (a <= b) {
         return (a);
     }
     return (b);
@@ -68,19 +68,23 @@ void initialize(int * R, int * p, int * q, int nrows, int ncols, struct align_se
         p[j] = infty;  // set P_0,j to +Inf
         R[j] = q[j] = set.is_global ? (set.v+set.u*j) : 0;
     }
+    R[0] = 0;  // set R_0,0 to 0
 
     // initialize left column (n = 0)
     for (i = 0; i < nrows; i++) {
         q[i*ncols] = infty;  // set Q_i,0 to +Inf
-        R[i*ncols] = set.is_global ? (set.v+set.u*i) : 0;
+        if (i > 0) {
+            R[i*ncols] = set.is_global ? (set.v+set.u*i) : 0;
+            p[i*ncols] = set.u + min2(p[(i-1)*ncols], R[(i-1)*ncols]+set.v);
+        }
         // use a nested loop to zero out the bits matrix
         for (j = 0; j < ncols; j++) {
             bits[i*ncols + j] = 0;
         }
     }
-    bits[nrows*ncols-1] = 4;  // set c(l1+1, l2+1) = 1, i.e., 0000100
 
-    R[0] = 0;  // set R_0,0 to 0
+    // TODO:  is this a global alignment assumption?
+    bits[nrows*ncols-1] = 4;  // set c(l1+1, l2+1) = 1, i.e., 0000100
 }
 
 
@@ -95,7 +99,7 @@ void cost_assignment(int * R, int * p, int * q, int nrows, int ncols, int * a, i
     }
 
     // iterate through cost matrix by diagonals
-    for (int offset=1; offset<ncols+nrows; offset++) {
+    for (int offset=1; offset<nrows+ncols; offset++) {
         j = offset;
         for (i = 1; i < nrows; i++) {
             here = i*ncols + j;
@@ -108,11 +112,13 @@ void cost_assignment(int * R, int * p, int * q, int nrows, int ncols, int * a, i
 
                 // can cost P_{i,j} be achieved by edge V_{i-1,j}?
                 if (p[here] == p[up]+set.u) {
+                    //fprintf(stdout, "(%d,%d) set d(%d,%d)\n", i, j, i-1, j);
                     bits[up] |= 8;  // set bit d(i-1,j) == 1
                 }
 
                 // can P_{i,j} be achieved without using edge V_{i-1,j}?
                 if (p[here] == R[up]+set.u+set.v) {
+                    //fprintf(stdout, "(%d,%d) set e(%d,%d)\n", i, j, i-1, j);
                     bits[up] |= 16;  // set bit e(i-1,j) == 1
                 }
 
@@ -121,9 +127,11 @@ void cost_assignment(int * R, int * p, int * q, int nrows, int ncols, int * a, i
 
                 // can cost Q_{i,j} be achieved using edge H_{i,j-1}?
                 if (q[here] == q[left]+set.u) {
+                    //fprintf(stdout, "(%d,%d) set f(%d,%d)\n", i, j, i-1, j);
                     bits[left] |= 32;  // set bit f(i,j-1) == 1
                 }
                 if (q[here] == R[left]+set.u+set.v) {
+                    //fprintf(stdout, "(%d,%d) set g(%d,%d)\n", i, j, i-1, j);
                     bits[left] |= 64;  // set bit g(i,j-1) == 1
                 }
 
@@ -135,13 +143,16 @@ void cost_assignment(int * R, int * p, int * q, int nrows, int ncols, int * a, i
 
                 // can R_{i,j} be achieved using edges V_{i,j}, H_{i,j} or D_{i,j}?
                 if (R[here] == p[here]) {
-                    bits[here] |= 1;  // set bit a(m,n) to 1
+                    //fprintf(stdout, "(%d,%d) set a(%d,%d)\n", i, j, i, j);
+                    bits[here] |= 1;  // set bit a(i,j) to 1
                 }
                 if (R[here] == q[here]) {
-                    bits[here] |= 2;  // set bit b(m,n) to 1
+                    //fprintf(stdout, "(%d,%d) set b(%d,%d)\n", i, j, i, j);
+                    bits[here] |= 2;  // set bit b(i,j) to 1
                 }
                 if (R[here] == R[diag] - set.d[a[i-1]*set.l+b[j-1]]){
-                    bits[here] |= 4;  // set bit c(m,n) to 1
+                    //fprintf(stdout, "(%d,%d) set c(%d,%d)\n", i, j, i, j);
+                    bits[here] |= 4;  // set bit c(i,j) to 1
                 }
             }
 
@@ -326,10 +337,43 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
         }
         fprintf(stdout, "\n");
     }
-    fprintf(stdout, "\n");
+    fprintf(stdout, "\n\n");
 
+    /*
+    for (int i=0; i<l1+1; i++) {
+        for (int j=0; j<l2+1; j++) {
+            fprintf(stdout, "%d ", P[i*(l2+1)+j]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n\n");
+
+    for (int i=0; i<l1+1; i++) {
+        for (int j=0; j<l2+1; j++) {
+            fprintf(stdout, "%d ", Q[i*(l2+1)+j]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n\n");
+
+    for (int i=0; i<l1+1; i++) {
+        for (int j=0; j<l2+1; j++) {
+            fprintf(stdout, "%d ", bits[i*(l2+1)+j]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n\n");
+    */
     edge_assignment(bits, l1+1, l2+1);
-
+    /*
+    for (int i=0; i<l1+1; i++) {
+        for (int j=0; j<l2+1; j++) {
+            fprintf(stdout, "%d ", bits[i*(l2+1)+j]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n\n");
+    */
     // TODO: 3. traceback
     traceback(bits, l1+1, l2+1, seq1, seq2, aligned1, aligned2);
 
