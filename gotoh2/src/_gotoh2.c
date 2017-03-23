@@ -14,6 +14,16 @@ struct align_settings {
     int * d;  // weighting function
 };
 
+struct align_matrices {
+    int nrows;  // all four matrices have the same dimensions
+    int ncols;
+    int * R;  // linearized cost matrix
+    int * p;  //
+    int * q;
+    int * bits;
+};
+
+
 struct align_output {
     const char * aligned_seq1;
     const char * aligned_seq2;
@@ -59,100 +69,94 @@ void encode_sequence (const char * seq, int * map, int * encoded) {
 
 
 
-void initialize(int * R, int * p, int * q, int nrows, int ncols, struct align_settings set, int * bits) {
+void initialize(struct align_matrices * mx, struct align_settings set) {
     int i, j;  // row and column counters
+    int ix, ix2;  // indices into linearized matrix
     int infty = INT_MAX;  // maximum integer value from limits.h
 
     // initialize the top row (m = 0)
-    for (j = 0; j < ncols; j++) {
-        p[j] = infty;  // set P_0,j to +Inf
-        R[j] = q[j] = set.is_global ? (set.v+set.u*j) : 0;
+    for (j = 0; j < mx->ncols; j++) {
+        mx->p[j] = infty;  // set P_0,j to +Inf
+        mx->R[j] = mx->q[j] = set.is_global ? (set.v+set.u*j) : 0;
     }
-    R[0] = 0;  // set R_0,0 to 0
+
+    mx->R[0] = 0;  // set R_0,0 to 0
 
     // initialize left column (n = 0)
-    for (i = 0; i < nrows; i++) {
-        q[i*ncols] = infty;  // set Q_i,0 to +Inf
+    for (i = 0; i < mx->nrows; i++) {
+        ix = i*mx->ncols;
+        mx->q[ix] = infty;  // set Q_i,0 to +Inf
         if (i > 0) {
-            R[i*ncols] = set.is_global ? (set.v+set.u*i) : 0;
-            p[i*ncols] = set.u + min2(p[(i-1)*ncols], R[(i-1)*ncols]+set.v);
+            mx->R[ix] = set.is_global ? (set.v+set.u*i) : 0;
+            ix2 = (i-1)*mx->ncols;
+            mx->p[ix] = set.u + min2(mx->p[ix2], mx->R[ix2]+set.v);
         }
+
         // use a nested loop to zero out the bits matrix
-        for (j = 0; j < ncols; j++) {
-            bits[i*ncols + j] = 0;
+        for (j = 0; j < mx->ncols; j++) {
+            mx->bits[ix + j] = 0;
         }
     }
 
-    // TODO:  is this a global alignment assumption?
-    bits[nrows*ncols-1] = 4;  // set c(l1+1, l2+1) = 1, i.e., 0000100
+    // set c(l1+1, l2+1) = 1, i.e., 0000100
+    mx->bits[mx->nrows * mx->ncols - 1] = 4;
 }
 
 
 // The D matrix has (m+1) rows and (n+1) columns for two sequences of lengths
 // m and n, respectively.  Note I'm switching notation from D to R.
-void cost_assignment(int * R, int * p, int * q, int nrows, int ncols, int * a, int * b, struct align_settings set, int * bits) {
+void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_settings set) {
     int i, j;  // row and column counters
     int here, up, left, diag;  // cache indices for linearized matrix
-    int max_dim = nrows;
-    if (nrows < ncols) {
-        max_dim = ncols;
-    }
 
     // iterate through cost matrix by diagonals
-    for (int offset=1; offset<nrows+ncols; offset++) {
+    for (int offset=1; offset<mx->ncols+mx->nrows; offset++) {
         j = offset;
-        for (i = 1; i < nrows; i++) {
-            here = i*ncols + j;
-            up = here - ncols;  // (i-1)*ncols + j
+        for (i = 1; i < mx->nrows; i++) {
+            here = i*mx->ncols + j;
+            up = here - mx->ncols;  // (i-1)*ncols + j
             left = here - 1;  // i*ncols + (j-1)
             diag = up - 1;  // (i-1)*ncols + (j-1)
 
-            if (j < ncols) {
-                p[here] = set.u + min2(R[up]+set.v, p[up]);
+            if (j < mx->ncols) {
+                mx->p[here] = set.u + min2(mx->R[up]+set.v, mx->p[up]);
 
                 // can cost P_{i,j} be achieved by edge V_{i-1,j}?
-                if (p[here] == p[up]+set.u) {
-                    //fprintf(stdout, "(%d,%d) set d(%d,%d)\n", i, j, i-1, j);
-                    bits[up] |= 8;  // set bit d(i-1,j) == 1
+                if (mx->p[here] == mx->p[up]+set.u) {
+                    mx->bits[up] |= 8;  // set bit d(i-1,j) == 1
                 }
 
                 // can P_{i,j} be achieved without using edge V_{i-1,j}?
-                if (p[here] == R[up]+set.u+set.v) {
-                    //fprintf(stdout, "(%d,%d) set e(%d,%d)\n", i, j, i-1, j);
-                    bits[up] |= 16;  // set bit e(i-1,j) == 1
+                if (mx->p[here] == mx->R[up]+set.u+set.v) {
+                    mx->bits[up] |= 16;  // set bit e(i-1,j) == 1
                 }
 
                 // find minimum cost of path ending at i,j and using edge H_{i,j}
-                q[here] = set.u + min2(R[left]+set.v, q[left]);
+                mx->q[here] = set.u + min2(mx->R[left]+set.v, mx->q[left]);
 
                 // can cost Q_{i,j} be achieved using edge H_{i,j-1}?
-                if (q[here] == q[left]+set.u) {
-                    //fprintf(stdout, "(%d,%d) set f(%d,%d)\n", i, j, i-1, j);
-                    bits[left] |= 32;  // set bit f(i,j-1) == 1
+                if (mx->q[here] == mx->q[left]+set.u) {
+                    mx->bits[left] |= 32;  // set bit f(i,j-1) == 1
                 }
-                if (q[here] == R[left]+set.u+set.v) {
-                    //fprintf(stdout, "(%d,%d) set g(%d,%d)\n", i, j, i-1, j);
-                    bits[left] |= 64;  // set bit g(i,j-1) == 1
+                if (mx->q[here] == mx->R[left]+set.u+set.v) {
+                    mx->bits[left] |= 64;  // set bit g(i,j-1) == 1
                 }
 
                 // find minimum cost of path ending at N_{i,j}
                 // note we subtract (d) from (R) because we are minimizing
-                R[here] = min3(R[diag] - set.d[a[i-1]*set.l+b[j-1]],
-                               p[here],
-                               q[here]);
+                mx->R[here] = min3(mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]],
+                               mx->p[here],
+                               mx->q[here]);
 
                 // can R_{i,j} be achieved using edges V_{i,j}, H_{i,j} or D_{i,j}?
-                if (R[here] == p[here]) {
-                    //fprintf(stdout, "(%d,%d) set a(%d,%d)\n", i, j, i, j);
-                    bits[here] |= 1;  // set bit a(i,j) to 1
+                if (mx->R[here] == mx->p[here]) {
+                    mx->bits[here] |= 1;  // set bit a(m,n) to 1
                 }
-                if (R[here] == q[here]) {
-                    //fprintf(stdout, "(%d,%d) set b(%d,%d)\n", i, j, i, j);
-                    bits[here] |= 2;  // set bit b(i,j) to 1
+                if (mx->R[here] == mx->q[here]) {
+                    mx->bits[here] |= 2;  // set bit b(m,n) to 1
                 }
-                if (R[here] == R[diag] - set.d[a[i-1]*set.l+b[j-1]]){
-                    //fprintf(stdout, "(%d,%d) set c(%d,%d)\n", i, j, i, j);
-                    bits[here] |= 4;  // set bit c(i,j) to 1
+                if (mx->R[here] == mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]]){
+                    mx->bits[here] |= 4;  // set bit c(m,n) to 1
                 }
             }
 
@@ -166,97 +170,160 @@ void cost_assignment(int * R, int * p, int * q, int nrows, int ncols, int * a, i
 
 
 // steps 8 through 11 inclusive of Altschul-Erickson algorithm
-void edge_assignment(int * bits, int nrows, int ncols) {
+void edge_assignment(struct align_matrices * mx) {
     // bits: linearized matrix storing traceback bits
     //    e.g.,   0010010 = 18
     //            gfedcba
+    int i, j;  // row, column indices
+    int here, down, right, diag;  // indices into linearized arrays
+    int nrows = mx->nrows,
+        ncols = mx->ncols;  // unpack integers from struct
+    int * bits = mx->bits;  // unpack arrays
+    int cond1, cond2, cond3, cond4, cond5;
 
-    // switching index integers from (m,n) to (i,j) because that's what
-    // Altschul and Erickson use and it's easier to follow their pseudocode this way
-    for (int here, down, right, diag, i = nrows-1; i >= 0; i--) {
-        for (int j = ncols-1; j >= 0; j--) {
+    fprintf(stdout, "bits before:\n");
+    for (i=0; i<nrows; i++) {
+        for (j=0; j<ncols; j++) {
+            fprintf(stdout, "%d ", bits[i*ncols + j]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
+
+    // start at lower-right cell
+    for (i = nrows-1; i >= 0; i--) {
+        for (j = ncols-1; j >= 0; j--) {
             here = i*ncols + j;
             down = here + ncols;  // (i+1)*ncols + j
             right = here + 1;  // i*ncols + (j+1)
             diag = down + 1;  // (i+1)*ncols + (j+1)
 
-            if (
-                (!(bits[down]&1) || !(bits[here]&(1<<4))) &&  // a[i+1,j] is 0  OR  e[i,j] is 0
-                (!(bits[right]&(1<<1)) || !(bits[here]&(1<<6))) &&  // b[i,j+1] is 0  OR  g[i,j] is 0
-                !(bits[diag]&(1<<2))  // c[i+i,j+1] is 0
-            ) {
-                bits[here] |= 1;  // set a[i,j] to 1
-                bits[here] |= 2;  // set b[i,j] to 1
-                bits[here] |= 4;  // set c[i,j] to 1
+            // reset conditions
+            cond1 = cond2 = cond3 = cond4 = cond5 = 0;
+
+            // a[i+1,j] is 0 and not last row
+            if ( !(bits[down] & 1) && i < nrows-1 ) {
+                cond1 = 1;
             }
 
-            // if a[i+1,j] == b[i,j+1] == c[i+1,j+1] == 0, skip steps 10 and 11
-            if (!(bits[down]&1) && !(bits[right]&(1<<1)) && !(bits[diag]&(1<<2))) {
+            // e[i,j] is 0
+            if ( !(bits[here] & (1<<4)) ) {
+                cond2 = 1;
+            }
+
+            // b[i,j+1] is 0 and not last column
+            if ( !(bits[right] & (1<<1)) && j < ncols-1 ) {
+                cond3 = 1;
+            }
+
+            // g[i,j] is 0
+            if ( !(bits[here] & (1<<6)) ) {
+                cond4 = 1;
+            }
+
+            // c[i+1,j+1] is 0 and not last row nor last column
+            if ( !(bits[diag] & (1<<2)) && i < nrows-1 && j < ncols-1 ) {
+                cond5 = 1;
+            }
+
+            // step 8
+            if ( (cond1 || cond2) && (cond3 || cond4) && cond5 ) {
+                bits[here] &= ~1;  // set a[i,j] to 0
+                bits[here] &= ~(1<<1);  // set b[i,j] to 0
+                bits[here] &= ~(1<<2);  // set c[i,j] to 0
+            }
+
+            // step 9. if a[i+1,j] == b[i,j+1] == c[i+1,j+1] == 0, skip steps 10 and 11
+            if ( ( bits[down]&1 && i < nrows-1 ) ||
+                 ( bits[right]&(1<<1) && j < ncols-1 ) ||
+                 ( bits[diag]&(1<<2) && i < nrows-1 && j < ncols-1 )
+               ){
                 // step 10
-                if (bits[down]&1 && bits[here]&(1<<3)) {  // if a[i+1,j] is 1 and d[i,j] is 1
+                // if  a[i+1,j] is 1  AND  d[i,j] is 1
+                if ( bits[down]&1 && i < nrows-1 && bits[here]&(1<<3) ) {
                     // set d[i+1,j] to 1-e[i,j]
                     if (bits[here]&(1<<4)) {
-                        bits[down] = bits[down] & ~(1<<3);
+                        bits[down] &= ~(1<<3); // d to 0
                     } else {
-                        bits[down] |= 8;
+                        bits[down] |= (1<<3); // d to 1
                     }
 
-                    // set e[i.j] to 1-a[i,j]
+                    // set e[i,j] to 1-a[i,j]
                     if (bits[here]&1) {
-                        bits[here] = bits[here] & ~(1<<4);
+                        bits[here] &= ~(1<<4);  // e to 0
                     } else {
-                        bits[here] |= 16;
+                        bits[here] |= (1<<4);  // e to 1
                     }
 
                     // set a[i,j] to 1
                     bits[here] |= 1;
                 } else {
                     // otherwise, set d[i+1,j] and e[i,j] to 0
-                    bits[down] = bits[down] & ~(1<<3);
-                    bits[here] = bits[here] & ~(1<<4);
+                    bits[down] &= ~(1<<3);
+                    bits[here] &= ~(1<<4);
                 }
 
                 // step 11
-                if ((bits[right]&2) && (bits[here]&32)) {  // if b[i,j+1] is 1  AND  f[i,j] is 1
+                // if b[i,j+1] is 1  AND  f[i,j] is 1
+                if ( bits[right]&(1<<1) && j < ncols-1 && bits[here]&(1<<5) ) {
                     // set f[i,j+1] to 1-g[i,j]
                     if (bits[here]&(1<<6)) {
-                        bits[right] = bits[right] & ~(1<<5);
+                        bits[right] &= ~(1<<5);  // f to 0
                     } else {
-                        bits[right] |= 32;
+                        bits[right] |= (1<<5);  // f to 1
                     }
                     // set g[i,j] to 1-b[i,j]
                     if (bits[here]&(1<<1)) {
-                        bits[here] = bits[here] & ~(1<<6);
+                        bits[here] &= ~(1<<6);  // g to 0
                     } else {
-                        bits[here] |= 64;
+                        bits[here] |= (1<<6);  // g to 1
                     }
                     // set b[i,j] to 1
-                    bits[here] |= 2;
+                    bits[here] |= (1<<1);
                 } else {
                     // otherwise set f[i,j+1] and g[i,j] to 0
-                    bits[right] = bits[right] & ~(1<<5);
-                    bits[here] = bits[here] & ~(1<<6);
+                    bits[right] &= ~(1<<5);
+                    bits[here] &= ~(1<<6);
                 }
             }
         }
     }
+
+    fprintf(stdout, "bits after:\n");
+    for (i=0; i<nrows; i++) {
+        for (j=0; j<ncols; j++) {
+            fprintf(stdout, "%d ", bits[i*ncols + j]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
 }
 
-void traceback(int * bits, int nrows, int ncols,
+
+void traceback(struct align_matrices mx, struct align_settings set,
                const char * seq1, const char * seq2,
                char * aligned1, char * aligned2) {
     // return all pairwise alignments given edge assignment
     // FIXME: for now, just return one path
 
-    // start from the lower right of our matrix
-    int i = nrows-1,  // nrows is len(seq1)+1, adjust for zero-index
-        j = ncols-1,
-        here;
-    int alen = 0;
+    // for global alignment start from the lower right of our matrix
+    int i = mx.nrows-1,  // nrows is len(seq1)+1, adjust for zero-index
+        j = mx.ncols-1,
+        here;  // index for linearized matrix
+
+    int alen = 0;  // track length of pairwise alignment
+
+    /*
+    if (!set.is_global) {
+        // search for best score along last row and last column
+        int min_score = INT_MAX;
+        here = j;  // move to (0, ncols-1)
+    }
+    */
 
     while (i>0 && j>0) {
-        here = i*ncols + j;
-        if (bits[here]&1) {  // a[i,j]==1
+        here = i*mx.ncols + j;
+        if (mx.bits[here]&1) {  // a[i,j]==1
             // an optimal path uses V(i,j)
 
             // append gap to aligned1
@@ -267,14 +334,14 @@ void traceback(int * bits, int nrows, int ncols,
             fprintf(stdout, "%d %d %d V\n", alen, i, j);
             i--;
         }
-        else if (bits[here]&(1<<1)) {  // b[i,j]==1
+        else if (mx.bits[here]&(1<<1)) {  // b[i,j]==1
             // an optimal path uses H(i,j)
             fprintf(stdout, "%d %d %d H\n", alen, i, j);
             aligned2[alen] = seq2[j-1];
             aligned1[alen] = '-';
             j--;
         }
-        else if (bits[here]&(1<<2)) {
+        else if (mx.bits[here]&(1<<2)) {
             // an optimal path uses D(i,j)
             fprintf(stdout, "%d %d %d D\n", alen, i, j);
             aligned1[alen] = seq1[i-1];
@@ -301,8 +368,9 @@ void traceback(int * bits, int nrows, int ncols,
     for (i=0; i<alen; i++) aligned2[i] = temp[i];
 }
 
+
 // main wrapper function
-struct align_output align(const char * seq1, const char * seq2, struct align_settings m) {
+struct align_output align(const char * seq1, const char * seq2, struct align_settings set) {
     int map[256] = {0};
     int l1 = (int) strlen(seq1);  // sequence lengths
     int l2 = (int) strlen(seq2);
@@ -310,79 +378,62 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     int sA[l1];  // integer-encoded sequences
     int sB[l2];
 
-    int D[(l1+1)*(l2+1)];
-    int P[(l1+1)*(l2+1)];
-    int Q[(l1+1)*(l2+1)];
+    struct align_matrices my_matrices;
+    my_matrices.nrows = l1+1;
+    my_matrices.ncols = l2+1;
 
-    int bits[(l1+1)*(l2+1)];  // stores Altschul and Erickson's seven traceback bits as integer
+    // dynamic allocation of arrays (strings)
+    int array_length = (l1+1)*(l2+1);
+    my_matrices.R = malloc(sizeof(int) * array_length);
+    my_matrices.p = malloc(sizeof(int) * array_length);
+    my_matrices.q = malloc(sizeof(int) * array_length);
+    my_matrices.bits = malloc(sizeof(int) * array_length);
+
     struct align_output o;
     char aligned1[l1+l2];  // allocate enough space for completely non-overlapping sequences
     char aligned2[l1+l2];
-    int alen;  // track lengths of aligned sequences
 
     // 1. convert sequences into integer indices into alphabet
-    map_ascii_to_alphabet(map, m.alphabet);
+    map_ascii_to_alphabet(map, set.alphabet);
 
     encode_sequence(seq1, map, sA);
     encode_sequence(seq2, map, sB);
 
     // 2. generate D matrix
-    initialize(D, P, Q, l1+1, l2+1, m, bits);
-    cost_assignment(D, P, Q, l1+1, l2+1, sA, sB, m, bits);
+    // note we are passing align_matrices struct by reference to functions that will modify its contents
+    initialize(&my_matrices, set);
+    cost_assignment(sA, sB, &my_matrices, set);
+
+    edge_assignment(&my_matrices);
 
     // DEBUGGING - print cost matrix to screen
-    for (int i=0; i<l1+1; i++) {
-        for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", D[i*(l2+1)+j]);
-        }
-        fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n\n");
-
     /*
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", P[i*(l2+1)+j]);
+            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+1) + j]);
         }
         fprintf(stdout, "\n");
     }
-    fprintf(stdout, "\n\n");
-
-    for (int i=0; i<l1+1; i++) {
-        for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", Q[i*(l2+1)+j]);
-        }
-        fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n\n");
-
-    for (int i=0; i<l1+1; i++) {
-        for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", bits[i*(l2+1)+j]);
-        }
-        fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n\n");
+    fprintf(stdout, "\n");
     */
-    edge_assignment(bits, l1+1, l2+1);
-    /*
-    for (int i=0; i<l1+1; i++) {
-        for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", bits[i*(l2+1)+j]);
-        }
-        fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n\n");
-    */
+    
     // TODO: 3. traceback
-    traceback(bits, l1+1, l2+1, seq1, seq2, aligned1, aligned2);
+    traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);
 
     // TODO: decode aligned integer sequences into alphabet sequences
     o.aligned_seq1 = aligned1;
     o.aligned_seq2 = aligned2;
-    o.alignment_score = -1 * D[(l1+1)*(l2+1)-1];  // FIXME: works for global only!
+    o.alignment_score = -1 * my_matrices.R[(l1+1)*(l2+1)-1];  // FIXME: works for global only!
+
+
+    free(my_matrices.R);
+    free(my_matrices.p);
+    free(my_matrices.q);
+    free(my_matrices.bits);
+
     return o;
 }
+
 
 static PyObject * align_wrapper(PyObject * self, PyObject * args) {
     const char * alphabet;
