@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <limits.h>
 
-
 struct align_settings {
     int is_global;
     int v;  // gap opening penalty
@@ -181,16 +180,6 @@ void edge_assignment(struct align_matrices * mx) {
     int * bits = mx->bits;  // unpack arrays
     int cond1, cond2, cond3, cond4, cond5;
 
-    fprintf(stdout, "bits before:\n");
-    for (i=0; i<nrows; i++) {
-        for (j=0; j<ncols; j++) {
-            fprintf(stdout, "%d ", bits[i*ncols + j]);
-        }
-        fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n");
-
-    // start at lower-right cell
     for (i = nrows-1; i >= 0; i--) {
         for (j = ncols-1; j >= 0; j--) {
             here = i*ncols + j;
@@ -288,15 +277,6 @@ void edge_assignment(struct align_matrices * mx) {
             }
         }
     }
-
-    fprintf(stdout, "bits after:\n");
-    for (i=0; i<nrows; i++) {
-        for (j=0; j<ncols; j++) {
-            fprintf(stdout, "%d ", bits[i*ncols + j]);
-        }
-        fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n");
 }
 
 
@@ -305,21 +285,42 @@ void traceback(struct align_matrices mx, struct align_settings set,
                char * aligned1, char * aligned2) {
     // return all pairwise alignments given edge assignment
     // FIXME: for now, just return one path
-
-    // for global alignment start from the lower right of our matrix
-    int i = mx.nrows-1,  // nrows is len(seq1)+1, adjust for zero-index
-        j = mx.ncols-1,
-        here;  // index for linearized matrix
-
+    int nrows = mx.nrows,
+        ncols = mx.ncols;
+    int i, j, here;  // index for linearized matrix
+    int init_i, init_j;
+    int score,  min_score = INT_MAX;
     int alen = 0;  // track length of pairwise alignment
 
-    /*
-    if (!set.is_global) {
-        // search for best score along last row and last column
-        int min_score = INT_MAX;
-        here = j;  // move to (0, ncols-1)
+    if (set.is_global) {
+        // start at lower-right cell if global
+        init_i = nrows-1;
+        init_j = ncols-1;
+    } else {
+        // search right-most column
+        for (i=0; i < nrows; i++) {
+            here = i*ncols + (ncols-1);
+            score = mx.R[here];
+            if (score < min_score) {
+                init_i = i;
+                init_j = ncols-1;
+                min_score = score;
+            }
+        }
+        // search bottom row
+        for (j=0; j < ncols; j++) {
+            here = (nrows-1)*ncols + j;
+            score = mx.R[here];
+            if (score < min_score) {
+                init_i = nrows-1;
+                init_j = j;
+                min_score = score;
+            }
+        }
     }
-    */
+    i = init_i;
+    j = init_j;
+    fprintf (stdout, "%d %d\n", i, j);
 
     while (i>0 && j>0) {
         here = i*mx.ncols + j;
@@ -371,6 +372,9 @@ void traceback(struct align_matrices mx, struct align_settings set,
 
 // main wrapper function
 struct align_output align(const char * seq1, const char * seq2, struct align_settings set) {
+
+    fprintf(stdout, "seq1: %s\nseq2: %s\n", seq1, seq2);
+
     int map[256] = {0};
     int l1 = (int) strlen(seq1);  // sequence lengths
     int l2 = (int) strlen(seq2);
@@ -416,7 +420,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     }
     fprintf(stdout, "\n");
     */
-    
+
     // TODO: 3. traceback
     traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);
 
@@ -450,7 +454,6 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
     if (!PyArg_ParseTuple(args, "ssiiisO", &seq1, &seq2, &gop, &gep, &is_global, &alphabet, &obj)) {
         return NULL;
     }
-
 
     // transfer arguments to struct
     my_settings.v = gop;

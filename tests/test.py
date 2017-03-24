@@ -18,10 +18,10 @@ class TestAlignerSimpleGlobal(TestAligner):
 
 class TestAlignerSimpleLocal(TestAligner):
     def runTest(self):
-        self.g2.is_global = 0
-        #aligned_ref, aligned_query, aligned_score = self.g2.align('TACGTA', 'ACT')
-        #print aligned_ref
-        #print aligned_query
+        self.g2.is_global = False
+        aligned_ref, aligned_query, aligned_score = self.g2.align('TACGTA', 'ACT')
+        print aligned_ref
+        print aligned_query
         pass
 
 if __name__ == '__main__':
