@@ -320,31 +320,41 @@ void traceback(struct align_matrices mx, struct align_settings set,
     }
     i = init_i;
     j = init_j;
-    fprintf (stdout, "%d %d\n", i, j);
+
+    // pad right side of alignment if local
+    if (i < nrows-1) {
+        // add gaps in seq2
+        for (alen=0; alen<nrows-1-i; alen++) {
+            aligned1[alen] = seq1[nrows-1-alen-1];
+            aligned2[alen] = '-';
+        }
+    }
+    if (j < ncols-1) {
+        for (alen=0; alen<ncols-1-j; alen++) {
+            aligned1[alen] = '-';
+            aligned2[alen] = seq2[ncols-1-alen-1];
+        }
+    }
 
     while (i>0 && j>0) {
         here = i*mx.ncols + j;
         if (mx.bits[here]&1) {  // a[i,j]==1
             // an optimal path uses V(i,j)
-
-            // append gap to aligned1
-            aligned2[alen] = '-';
-            // append base from seq2 to aligned2
+             //fprintf(stdout, "%d %d %d V\n", alen, i, j);
             aligned1[alen] = seq1[i-1];
-
-            fprintf(stdout, "%d %d %d V\n", alen, i, j);
+            aligned2[alen] = '-';
             i--;
         }
         else if (mx.bits[here]&(1<<1)) {  // b[i,j]==1
             // an optimal path uses H(i,j)
-            fprintf(stdout, "%d %d %d H\n", alen, i, j);
-            aligned2[alen] = seq2[j-1];
+            //fprintf(stdout, "%d %d %d H\n", alen, i, j);
             aligned1[alen] = '-';
+            aligned2[alen] = seq2[j-1];
             j--;
         }
         else if (mx.bits[here]&(1<<2)) {
             // an optimal path uses D(i,j)
-            fprintf(stdout, "%d %d %d D\n", alen, i, j);
+            //fprintf(stdout, "%d %d %d D\n", alen, i, j);
             aligned1[alen] = seq1[i-1];
             aligned2[alen] = seq2[j-1];
             i--;
@@ -356,6 +366,21 @@ void traceback(struct align_matrices mx, struct align_settings set,
         }
         alen++;
     }
+
+    // TODO: pad left side of alignment if local
+    while (i>0) {
+        aligned1[alen] = seq1[i-1];
+        aligned2[alen] = '-';
+        i--;
+        alen++;
+    }
+    while (j>0) {
+        aligned1[alen] = '-';
+        aligned2[alen] = seq2[j-1];
+        j--;
+        alen++;
+    }
+
     aligned1[alen] = '\0';  // null terminators
     aligned2[alen] = '\0';
 
@@ -372,15 +397,14 @@ void traceback(struct align_matrices mx, struct align_settings set,
 
 // main wrapper function
 struct align_output align(const char * seq1, const char * seq2, struct align_settings set) {
-
-    fprintf(stdout, "seq1: %s\nseq2: %s\n", seq1, seq2);
-
     int map[256] = {0};
     int l1 = (int) strlen(seq1);  // sequence lengths
     int l2 = (int) strlen(seq2);
 
     int sA[l1];  // integer-encoded sequences
     int sB[l2];
+
+    fprintf(stdout, "seq1: %s(%d)\nseq2: %s(%d)\n", seq1, l1, seq2, l2);
 
     struct align_matrices my_matrices;
     my_matrices.nrows = l1+1;
