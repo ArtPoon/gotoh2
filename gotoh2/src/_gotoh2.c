@@ -280,7 +280,7 @@ void edge_assignment(struct align_matrices * mx) {
 }
 
 
-void traceback(struct align_matrices mx, struct align_settings set,
+int traceback(struct align_matrices mx, struct align_settings set,
                const char * seq1, const char * seq2,
                char * aligned1, char * aligned2) {
     // return all pairwise alignments given edge assignment
@@ -296,6 +296,7 @@ void traceback(struct align_matrices mx, struct align_settings set,
         // start at lower-right cell if global
         init_i = nrows-1;
         init_j = ncols-1;
+        min_score = mx.R[init_i*ncols + init_j];
     } else {
         // search right-most column
         for (i=0; i < nrows; i++) {
@@ -392,6 +393,8 @@ void traceback(struct align_matrices mx, struct align_settings set,
     // do the same thing for aligned2
     for (i=0; i<alen; i++) temp[alen-i-1] = aligned2[i];
     for (i=0; i<alen; i++) aligned2[i] = temp[i];
+
+    return -min_score;  // this is the alignment score
 }
 
 
@@ -403,8 +406,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
 
     int sA[l1];  // integer-encoded sequences
     int sB[l2];
-
-    fprintf(stdout, "seq1: %s(%d)\nseq2: %s(%d)\n", seq1, l1, seq2, l2);
+    int align_score;
 
     struct align_matrices my_matrices;
     my_matrices.nrows = l1+1;
@@ -446,13 +448,13 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     */
 
     // TODO: 3. traceback
-    traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);
+    align_score = traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);
 
     // TODO: decode aligned integer sequences into alphabet sequences
     o.aligned_seq1 = aligned1;
     o.aligned_seq2 = aligned2;
-    o.alignment_score = -1 * my_matrices.R[(l1+1)*(l2+1)-1];  // FIXME: works for global only!
-
+    //o.alignment_score = -1 * my_matrices.R[(l1+1)*(l2+1)-1];  // FIXME: works for global only!
+    o.alignment_score = align_score;
 
     free(my_matrices.R);
     free(my_matrices.p);
