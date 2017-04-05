@@ -20,9 +20,20 @@ class TestAlignerSimpleLocal(TestAligner):
     def runTest(self):
         self.g2.is_global = False
         aligned_ref, aligned_query, aligned_score = self.g2.align('TACGTA', 'ACGT')
-        print aligned_ref
-        print aligned_query
-        pass
+        expected = 'TACGTA'
+        self.assertEqual(expected, aligned_ref)
+        expected = '-ACGT-'
+        self.assertEqual(expected, aligned_query)
+        expected = 20
+        self.assertEqual(expected, aligned_score)
+
+class TestIssue5(TestAligner):
+    def runTest(self):
+        # this runs ok
+        result = self.g2.align('ACGTT', 'ACGT')
+        # this reproducibly crashes!
+        result = self.g2.align('ACGT', 'ACGTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
+        print result
 
 if __name__ == '__main__':
     unittest.main()

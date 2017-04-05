@@ -191,8 +191,8 @@ void edge_assignment(struct align_matrices * mx) {
             cond1 = cond2 = cond3 = cond4 = cond5 = 0;
 
             // a[i+1,j] is 0 and not last row
-            if ( !(bits[down] & 1) && i < nrows-1 ) {
-                cond1 = 1;
+            if (i < nrows-1) {
+                if (!(bits[down] & 1) ) cond1 = 1;
             }
 
             // e[i,j] is 0
@@ -201,8 +201,8 @@ void edge_assignment(struct align_matrices * mx) {
             }
 
             // b[i,j+1] is 0 and not last column
-            if ( !(bits[right] & (1<<1)) && j < ncols-1 ) {
-                cond3 = 1;
+            if (j < ncols-1) {
+                if ( !(bits[right] & (1<<1)) ) cond3 =  1;
             }
 
             // g[i,j] is 0
@@ -211,8 +211,8 @@ void edge_assignment(struct align_matrices * mx) {
             }
 
             // c[i+1,j+1] is 0 and not last row nor last column
-            if ( !(bits[diag] & (1<<2)) && i < nrows-1 && j < ncols-1 ) {
-                cond5 = 1;
+            if (i < nrows-1 && j < ncols-1) {
+                if ( !(bits[diag] & (1<<2)) ) cond5 = 1;
             }
 
             // step 8
@@ -223,56 +223,57 @@ void edge_assignment(struct align_matrices * mx) {
             }
 
             // step 9. if a[i+1,j] == b[i,j+1] == c[i+1,j+1] == 0, skip steps 10 and 11
-            if ( ( bits[down]&1 && i < nrows-1 ) ||
-                 ( bits[right]&(1<<1) && j < ncols-1 ) ||
-                 ( bits[diag]&(1<<2) && i < nrows-1 && j < ncols-1 )
-               ){
+            if ( !cond1 && !cond3 && !cond5 ) {
                 // step 10
                 // if  a[i+1,j] is 1  AND  d[i,j] is 1
-                if ( bits[down]&1 && i < nrows-1 && bits[here]&(1<<3) ) {
-                    // set d[i+1,j] to 1-e[i,j]
-                    if (bits[here]&(1<<4)) {
-                        bits[down] &= ~(1<<3); // d to 0
-                    } else {
-                        bits[down] |= (1<<3); // d to 1
-                    }
+                if (i < nrows-1) {
+                    if ( bits[down]&1 && bits[here]&(1<<3) ) {
+                        // set d[i+1,j] to 1-e[i,j]
+                        if (bits[here]&(1<<4)) {
+                            bits[down] &= ~(1<<3); // d to 0
+                        } else {
+                            bits[down] |= (1<<3); // d to 1
+                        }
 
-                    // set e[i,j] to 1-a[i,j]
-                    if (bits[here]&1) {
-                        bits[here] &= ~(1<<4);  // e to 0
-                    } else {
-                        bits[here] |= (1<<4);  // e to 1
-                    }
+                        // set e[i,j] to 1-a[i,j]
+                        if (bits[here]&1) {
+                            bits[here] &= ~(1<<4);  // e to 0
+                        } else {
+                            bits[here] |= (1<<4);  // e to 1
+                        }
 
-                    // set a[i,j] to 1
-                    bits[here] |= 1;
-                } else {
-                    // otherwise, set d[i+1,j] and e[i,j] to 0
-                    bits[down] &= ~(1<<3);
-                    bits[here] &= ~(1<<4);
+                        // set a[i,j] to 1
+                        bits[here] |= 1;
+                    } else {
+                        // otherwise, set d[i+1,j] and e[i,j] to 0
+                        bits[down] &= ~(1<<3);
+                        bits[here] &= ~(1<<4);
+                    }
                 }
 
                 // step 11
                 // if b[i,j+1] is 1  AND  f[i,j] is 1
-                if ( bits[right]&(1<<1) && j < ncols-1 && bits[here]&(1<<5) ) {
-                    // set f[i,j+1] to 1-g[i,j]
-                    if (bits[here]&(1<<6)) {
-                        bits[right] &= ~(1<<5);  // f to 0
+                if (j < ncols-1) {
+                    if ( bits[right]&(1<<1) && bits[here]&(1<<5) ) {
+                        // set f[i,j+1] to 1-g[i,j]
+                        if (bits[here]&(1<<6)) {
+                            bits[right] &= ~(1<<5);  // f to 0
+                        } else {
+                            bits[right] |= (1<<5);  // f to 1
+                        }
+                        // set g[i,j] to 1-b[i,j]
+                        if (bits[here]&(1<<1)) {
+                            bits[here] &= ~(1<<6);  // g to 0
+                        } else {
+                            bits[here] |= (1<<6);  // g to 1
+                        }
+                        // set b[i,j] to 1
+                        bits[here] |= (1<<1);
                     } else {
-                        bits[right] |= (1<<5);  // f to 1
+                        // otherwise set f[i,j+1] and g[i,j] to 0
+                        bits[right] &= ~(1<<5);
+                        bits[here] &= ~(1<<6);
                     }
-                    // set g[i,j] to 1-b[i,j]
-                    if (bits[here]&(1<<1)) {
-                        bits[here] &= ~(1<<6);  // g to 0
-                    } else {
-                        bits[here] |= (1<<6);  // g to 1
-                    }
-                    // set b[i,j] to 1
-                    bits[here] |= (1<<1);
-                } else {
-                    // otherwise set f[i,j+1] and g[i,j] to 0
-                    bits[right] &= ~(1<<5);
-                    bits[here] &= ~(1<<6);
                 }
             }
         }
@@ -415,9 +416,25 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     // dynamic allocation of arrays (strings)
     int array_length = (l1+1)*(l2+1);
     my_matrices.R = malloc(sizeof(int) * array_length);
+    if (my_matrices.R==NULL) {
+        fprintf(stdout, "malloc failed for R\n");
+        exit(1);
+    }
     my_matrices.p = malloc(sizeof(int) * array_length);
+    if (my_matrices.p==NULL) {
+        fprintf(stdout, "malloc failed for p\n");
+        exit(1);
+    }
     my_matrices.q = malloc(sizeof(int) * array_length);
+    if (my_matrices.q==NULL) {
+        fprintf(stdout, "malloc failed for q\n");
+        exit(1);
+    }
     my_matrices.bits = malloc(sizeof(int) * array_length);
+    if (my_matrices.bits==NULL) {
+        fprintf(stdout, "malloc failed for bits\n");
+        exit(1);
+    }
 
     struct align_output o;
     char aligned1[l1+l2];  // allocate enough space for completely non-overlapping sequences
@@ -509,8 +526,9 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
 
     // call align function
     my_output = align(seq1, seq2, my_settings);
-
+    fprintf (stdout, "returned from align()\n");
     PyObject * retval = Py_BuildValue("ssi", my_output.aligned_seq1, my_output.aligned_seq2, my_output.alignment_score);
+    fprintf (stdout, "assigned retval\n");
     return retval;
 }
 
