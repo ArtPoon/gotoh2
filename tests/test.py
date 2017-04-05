@@ -16,6 +16,13 @@ class TestAlignerSimpleGlobal(TestAligner):
         expected = 5+5+(-5-1)+5
         self.assertEqual(expected, aligned_score)
 
+class TestAlignerLongerGlobal(TestAligner):
+    def runTest(self):
+        aref, aquery, ascore = self.g2.align('ACGTACGTACGTACGT', 'ACGTACGTACTACGT')
+        expected = 'ACGTACGTAC-TACGT'
+        self.assertEqual(expected, aquery)
+        # TODO: run progressively longer sequences
+
 class TestAlignerSimpleLocal(TestAligner):
     def runTest(self):
         self.g2.is_global = False
@@ -33,7 +40,21 @@ class TestIssue5(TestAligner):
         result = self.g2.align('ACGTT', 'ACGT')
         # this reproducibly crashes!
         result = self.g2.align('ACGT', 'ACGTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
-        print result
+
+class TestFlouri(TestAligner):
+    """
+    Evaluate test cases described in Flouri et al. bioRxiv 031500
+    """
+    def runTest(self):
+        self.g2.is_global = True
+        self.g2.gap_open_penalty = 11
+        self.g2.gap_extend_penalty = 1
+        self.g2.set_model('NWALIGN')
+
+        a1, a2, score = self.g2.align('GGTGTGA', 'TCGCGT')
+        print a1
+        print a2
+        print score
 
 if __name__ == '__main__':
     unittest.main()

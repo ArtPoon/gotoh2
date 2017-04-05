@@ -22,7 +22,7 @@ class Aligner():
                 self.models.update({model_name: (mx, alpha)})
 
         # set default model
-        self.matrix, self.alphabet = self.models['HYPHY_NUC']
+        self.set_model('HYPHY_NUC')
 
     def __str__(self):
         # TODO: display useful information about alignment settings
@@ -39,6 +39,10 @@ class Aligner():
         for line in handle:
             rows.append(map(int, line.strip('\n').split(',')))
         return np.array(rows, dtype=np.int32), alphabet
+
+    def set_model(self, model):
+        if model in self.models:
+            self.matrix, self.alphabet = self.models[model]
 
     def clean_sequence(self, seq):
         # replace all non-alphabet characters with ambiguous symbol

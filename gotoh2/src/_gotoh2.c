@@ -505,7 +505,7 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
     my_settings.l = (int) strlen(alphabet);
     my_settings.alphabet = alphabet;
 
-    fprintf (stdout, "my_settings.alphabet = %s\n", my_settings.alphabet);
+    //fprintf (stdout, "my_settings.alphabet = %s\n", my_settings.alphabet);
 
     // parse NumPy array
     ndarray = PyArray_FROM_OTF(obj, NPY_INT, NPY_IN_ARRAY);
@@ -526,9 +526,7 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
 
     // call align function
     my_output = align(seq1, seq2, my_settings);
-    fprintf (stdout, "returned from align()\n");
     PyObject * retval = Py_BuildValue("ssi", my_output.aligned_seq1, my_output.aligned_seq2, my_output.alignment_score);
-    fprintf (stdout, "assigned retval\n");
     return retval;
 }
 
