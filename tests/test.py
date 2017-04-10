@@ -45,14 +45,24 @@ class TestFlouri(TestAligner):
     """
     Evaluate test cases described in Flouri et al. bioRxiv 031500
     """
-    def runTest(self):
+    def test_NWalign_example(self):
         self.g2.is_global = True
-        self.g2.gap_open_penalty = 11
+        self.g2.gap_open_penalty = 10
         self.g2.gap_extend_penalty = 1
         self.g2.set_model('NWALIGN')
 
-        a1, a2, score = self.g2.align('GGTGTGA', 'TCGCGT')
-        print a1
+        a1, a2, result = self.g2.align('GGTGTGA', 'TCGCGT')
+        expected = -3
+        self.assertEqual(expected, result)
+
+    def test_Biopp_example(self):
+        self.g2.is_global = True
+        self.g2.gap_open_penalty = 4
+        self.g2.gap_extend_penalty = 1
+        self.g2.set_model('Biopp')
+
+        a1, a2, score = self.g2.align('AAAGGG', 'TTAAAAGGGGTT')
+        print '\n'+a1
         print a2
         print score
 
