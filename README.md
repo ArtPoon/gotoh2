@@ -12,6 +12,15 @@ A lightweight Python/C module for pairwise alignment of genetic sequences.
 3. *It should be customizable.*  I've incorporated a basic interface at the Python level for importing different residue scoring matrices and for modifying gap penalties.
 4. *It should be fast.*  The C should help here, but I still need to run some benchmark tests for comparison.  Ideally faster than calling out to another program.
 
+## Usage example
+Aligning two sequences under default settings:
+```python
+>>> from gotoh2.aligner import Aligner
+>>> g2 = Aligner()
+>>> g2.align('ACGT', 'ACT')
+('ACGT', 'AC-T', 13)
+```
+
 ## Requirements
 * Python - not sure about version support yet; this was developed in Python 2.7.
 * NumPy - my next objective is to eliminate this requirement
