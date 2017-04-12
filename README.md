@@ -6,7 +6,7 @@ A lightweight Python/C module for pairwise alignment of genetic sequences.
 2. There was a major issue where I used to work: the lab relied heavily on an old in-house C program for pairwise alignment that was integrated into most of the bioinformatic pipelines.  The code was difficult to read, poorly documented, and occasionally yielded inconsistent results (enough to become a problem).  
 3. Over the years I've tried other pairwise alignment modules in Python and none<sup>1</sup> were as fast, customizable and easy to use as calling an alignment function from the [HyPhy shared library](https://github.com/veg/hyphy-python).  However, calling HyPhy -- an extensive software package for phylogenetic sequence analysis -- is kind of overkill.  
 
-<sup>1</sup>Other alternatives have come up since I started working on this in my spare time, so this is probably no longer true.
+<sup>1</sup> Other alternatives have come up since I started working on this in my spare time, so this is probably no longer true.
 
 ## Objectives
 1. *It should be maintainable.*  I've tried to write accessible C code.
