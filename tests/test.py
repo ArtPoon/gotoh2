@@ -66,5 +66,18 @@ class TestFlouri(TestAligner):
         print a2
         print score
 
+class TestHIV(TestAligner):
+    def test_pol(self):
+        with open('HXB2-RT.txt', 'rU') as f:
+            s1 = f.readline()
+        with open('NL4-3.txt', 'rU') as f:
+            s2 = f.readline()
+        self.g2.is_global = True
+        with self.assertRaises(RuntimeError):
+            _ = self.g2.align(s1, s2)
+
+        self.g2.is_global = False
+        result = self.g2.align(s1, s2)
+
 if __name__ == '__main__':
     unittest.main()

@@ -363,8 +363,8 @@ int traceback(struct align_matrices mx, struct align_settings set,
             j--;
         }
         else {
-            fprintf(stdout, "uh oh, no optimal path?");
-            exit(1);
+            // no optimal path, raise exception
+            return (NULL);
         }
         alen++;
     }
@@ -526,6 +526,10 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
 
     // call align function
     my_output = align(seq1, seq2, my_settings);
+    if (my_output.alignment_score == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "Traceback failed, try local alignment");
+        return NULL;
+    }
     PyObject * retval = Py_BuildValue("ssi", my_output.aligned_seq1, my_output.aligned_seq2, my_output.alignment_score);
     return retval;
 }
