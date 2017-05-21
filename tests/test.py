@@ -57,14 +57,15 @@ class TestFlouri(TestAligner):
 
     def test_Biopp_example(self):
         self.g2.is_global = True
-        self.g2.gap_open_penalty = 4
+        self.g2.gap_open_penalty = 5
         self.g2.gap_extend_penalty = 1
-        self.g2.set_model('Biopp')
+        self.g2.set_model('Biopp')  # 0 match, -1 mismatch
 
         a1, a2, score = self.g2.align('AAAGGG', 'TTAAAAGGGGTT')
-        print '\n'+a1
-        print a2
-        print score
+        expected = -15
+        # there appear to be multiple solutions with same score
+        self.assertEqual(expected, score)
+
 
 class TestHIV(TestAligner):
     def test_pol(self):
@@ -73,11 +74,23 @@ class TestHIV(TestAligner):
         with open('NL4-3.txt', 'rU') as f:
             s2 = f.readline()
         self.g2.is_global = True
-        with self.assertRaises(RuntimeError):
-            _ = self.g2.align(s1, s2)
+        _ = self.g2.align(s1, s2)
 
         self.g2.is_global = False
         result = self.g2.align(s1, s2)
+
+
+class TestIssues(TestAligner):
+    def test_issue6(self):
+        with open('HXB2-IN.txt') as f:
+            ref = f.readline()[:100]
+        with open('U54771.txt') as f:
+            query = f.readline()[:100]
+
+        self.g2.is_global = True
+        self.g2.gap_open_penalty = 2
+        self.g2.align(ref, query)
+
 
 if __name__ == '__main__':
     unittest.main()

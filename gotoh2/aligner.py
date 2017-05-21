@@ -6,8 +6,8 @@ import pkg_resources as pkgres
 
 class Aligner():
     def __init__(self):
-        # default (not very useful) settings
-        self.gap_open_penalty = 1
+        # default settings
+        self.gap_open_penalty = 5
         self.gap_extend_penalty = 1
         self.is_global = True
 

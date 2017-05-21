@@ -192,7 +192,7 @@ void edge_assignment(struct align_matrices * mx) {
 
             // a[i+1,j] is 0 and not last row
             if (i < nrows-1) {
-                if (!(bits[down] & 1) ) cond1 = 1;
+                if ( !(bits[down]&1) ) cond1 = 1;
             }
 
             // e[i,j] is 0
@@ -223,7 +223,7 @@ void edge_assignment(struct align_matrices * mx) {
             }
 
             // step 9. if a[i+1,j] == b[i,j+1] == c[i+1,j+1] == 0, skip steps 10 and 11
-            if ( !cond1 && !cond3 && !cond5 ) {
+            if ( !cond1 || !cond3 || !cond5 ) {
                 // step 10
                 // if  a[i+1,j] is 1  AND  d[i,j] is 1
                 if (i < nrows-1) {
@@ -364,6 +364,7 @@ int traceback(struct align_matrices mx, struct align_settings set,
         }
         else {
             // no optimal path, raise exception
+            fprintf(stdout, "traceback failed: i=%d j=%d bit=%d\n", i, j, mx.bits[here]);
             return (NULL);
         }
         alen++;
@@ -455,9 +456,9 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
 
     // DEBUGGING - print cost matrix to screen
     /*
-    for (int i=0; i<l1+1; i++) {
-        for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+1) + j]);
+    for (int i=79; i<90; i++) {
+        for (int j=79; j<90; j++) {
+            fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
         }
         fprintf(stdout, "\n");
     }
