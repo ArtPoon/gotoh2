@@ -62,6 +62,8 @@ class Aligner():
         """
         assert type(seq1) is str, 'seq1 must be a string'
         assert type(seq2) is str, 'seq2 must be a string'
+        assert len(seq1) > 0, 'seq1 cannot be an empty string'
+        assert len(seq2) > 0, 'seq2 cannot be an empty string'
 
         results = Cgotoh2.align(
             self.clean_sequence(seq1),

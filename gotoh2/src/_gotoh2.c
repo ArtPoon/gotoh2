@@ -342,21 +342,21 @@ int traceback(struct align_matrices mx, struct align_settings set,
         here = i*mx.ncols + j;
         if (mx.bits[here]&1) {  // a[i,j]==1
             // an optimal path uses V(i,j)
-             //fprintf(stdout, "%d %d %d V\n", alen, i, j);
+            // fprintf(stdout, "%d %d %d V\n", alen, i, j);
             aligned1[alen] = seq1[i-1];
             aligned2[alen] = '-';
             i--;
         }
         else if (mx.bits[here]&(1<<1)) {  // b[i,j]==1
             // an optimal path uses H(i,j)
-            //fprintf(stdout, "%d %d %d H\n", alen, i, j);
+            // fprintf(stdout, "%d %d %d H\n", alen, i, j);
             aligned1[alen] = '-';
             aligned2[alen] = seq2[j-1];
             j--;
         }
         else if (mx.bits[here]&(1<<2)) {
             // an optimal path uses D(i,j)
-            //fprintf(stdout, "%d %d %d D\n", alen, i, j);
+            // fprintf(stdout, "%d %d %d D\n", alen, i, j);
             aligned1[alen] = seq1[i-1];
             aligned2[alen] = seq2[j-1];
             i--;
@@ -456,8 +456,8 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
 
     // DEBUGGING - print cost matrix to screen
     /*
-    for (int i=79; i<90; i++) {
-        for (int j=79; j<90; j++) {
+    for (int i=0; i<l1+1; i++) {
+        for (int j=0; j<l2+1; j++) {
             fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
         }
         fprintf(stdout, "\n");
