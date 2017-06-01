@@ -285,7 +285,7 @@ int traceback(struct align_matrices mx, struct align_settings set,
                const char * seq1, const char * seq2,
                char * aligned1, char * aligned2) {
     // return all pairwise alignments given edge assignment
-    // FIXME: for now, just return one path
+    // FIXME: for now, just return one path - how to store arbitrary number of paths?
     int nrows = mx.nrows,
         ncols = mx.ncols;
     int i, j, here;  // index for linearized matrix
@@ -319,6 +319,7 @@ int traceback(struct align_matrices mx, struct align_settings set,
                 min_score = score;
             }
         }
+        // TODO: min_score may be achieved by more than one starting point
     }
     i = init_i;
     j = init_j;
@@ -340,6 +341,8 @@ int traceback(struct align_matrices mx, struct align_settings set,
 
     while (i>0 && j>0) {
         here = i*mx.ncols + j;
+
+        // TODO: instead of mutual exclusion, store all optimal paths
         if (mx.bits[here]&1) {  // a[i,j]==1
             // an optimal path uses V(i,j)
             // fprintf(stdout, "%d %d %d V\n", alen, i, j);
@@ -370,7 +373,7 @@ int traceback(struct align_matrices mx, struct align_settings set,
         alen++;
     }
 
-    // TODO: pad left side of alignment if local
+    // TODO: implement left padding for multiple optimal paths
     while (i>0) {
         aligned1[alen] = seq1[i-1];
         aligned2[alen] = '-';

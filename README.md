@@ -24,6 +24,18 @@ Aligning two sequences under default settings:
 ('ACGT', 'AC-T', 13)
 ```
 
+## Benchmarking
+
+Here are some times that were required for different programs to do pairwise alignment of the same 10 HIV-1 integrase sequences against the HXB2 reference sequence (867 nucleotides):
+
+| Program | Computing time |
+|---------|----------------|
+| gotoh2  | 0.3706 seconds |
+| Bio.pairwise2 | 89.5627 seconds |
+| [alignment](https://github.com/eseraygun/python-alignment) | 18.6270 seconds |
+| [alignment](alevchuk) | 7.7929 seconds |
+
+
 ## Requirements
 * [Python](https://www.python.org/downloads/) - not sure about version support yet; this was developed in Python 2.7.
 * [NumPy](http://www.numpy.org/) - my next objective is to eliminate this requirement
