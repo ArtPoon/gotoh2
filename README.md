@@ -14,7 +14,7 @@ Why did I bother writing yet another pairwise alignment program?
 1. *It should be maintainable.*  I've tried to write accessible C code.
 2. *It should be correct.*  I've been implementing a bunch of unit tests to validate the implementation of Altschul and Eriksson's modification of the Gotoh algorithm.
 3. *It should be customizable.*  I've incorporated a basic interface at the Python level for importing different residue scoring matrices and for modifying gap penalties.
-4. *It should be fast.*  The C should help here, but I still need to run some benchmark tests for comparison.  Ideally faster than calling out to another program.
+4. *It should be fast.*  The C should help here.  Ideally, we want to be faster or similar to calling out from Python to another program.
 
 ## Usage example
 Aligning two sequences under default settings:
@@ -26,7 +26,7 @@ Aligning two sequences under default settings:
 ```
 
 ## Benchmarks
-Here I report some reuslt for this module and other implementations of pairwise alignment algorithms as I could find for Python.  I also did some `subprocess` calls to the alignment program `MUSCLE` for comparison.  For each program, I performed pairwise alignment of 10 HIV-1 integrase sequences against the standard HXB2 reference sequence.
+Here I report some results for this module and other implementations of pairwise alignment algorithms as I could find for Python.  I also did some `subprocess` calls to the alignment program `MUSCLE` for comparison.  For each program, I performed pairwise alignment of 10 HIV-1 integrase sequences against the standard HXB2 reference sequence.
 
 | Program | Time |
 |---------|------|
