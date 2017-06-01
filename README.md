@@ -1,7 +1,8 @@
 # gotoh2
 A lightweight Python/C module for pairwise alignment of genetic sequences.
 
-## Why did you bother writing yet another pairwise alignment program?
+## Motivation
+Why did I bother writing yet another pairwise alignment program?
 1. This is, in part, a hobby-coding project that I started to keep my C coding skills up (since I do everything in Python and R these days).  
 2. There was a major issue where I used to work: the lab relied heavily on an old in-house C program for pairwise alignment that was integrated into most of the bioinformatic pipelines.  The code was difficult to read, poorly documented, and occasionally yielded inconsistent results (enough to become a problem).  
 3. Over the years I've tried other pairwise alignment modules in Python and none<sup>1</sup> were as fast, customizable and easy to use as calling an alignment function from the [HyPhy shared library](https://github.com/veg/hyphy-python).  However, calling HyPhy -- an extensive software package for phylogenetic sequence analysis -- is kind of overkill.  
@@ -23,6 +24,20 @@ Aligning two sequences under default settings:
 >>> g2.align('ACGT', 'ACT')
 ('ACGT', 'AC-T', 13)
 ```
+
+## Benchmarks
+Here I report some reuslt for this module and other implementations of pairwise alignment algorithms as I could find for Python.  I also did some `subprocess` calls to the alignment program `MUSCLE` for comparison.  For each program, I performed pairwise alignment of 10 HIV-1 integrase sequences against the standard HXB2 reference sequence.
+
+| Program | Time |
+|---------|------|
+| [gotoh2](gotoh2) | 0.319 seconds |
+| [Biopython.pairwise2](http://biopython.org/DIST/docs/api/Bio.pairwise2-module.html) | 89.56 seconds |
+| [alignment](https://pypi.python.org/pypi/alignment/1.0.9) by @eseraygun | 15.19 seconds |
+| [alignment](https://pypi.python.org/pypi/alignment/1.0.9) by @alevchuk | 5.90 seconds |
+| [MUSCLE](http://www.drive5.com/muscle/) | 0.134 seconds |
+
+In summary, `gotoh2` is a lot faster than the pairwise sequence alignment algorithm implemented in Biopython, and also seems to be substantially faster than other implementations in Python.  It even compares somewhat favorably against calling out to `MUSCLE` via subprocess.
+
 
 ## Requirements
 * [Python](https://www.python.org/downloads/) - not sure about version support yet; this was developed in Python 2.7.
