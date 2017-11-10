@@ -19,10 +19,10 @@ Why did I bother writing yet another pairwise alignment program?
 ## Usage example
 Aligning two sequences under default settings:
 ```python
->>> from gotoh2.aligner import Aligner
+>>> from gotoh2 import Aligner
 >>> g2 = Aligner()
 >>> g2.align('ACGT', 'ACT')
-('ACGT', 'AC-T', 13)
+('ACGT', 'AC-T', 4)
 ```
 
 ## Benchmarks
