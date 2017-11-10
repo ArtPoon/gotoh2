@@ -34,10 +34,16 @@ class Aligner():
         should also be a square matrix (same number of row and column entries).
         :return: (NumPy matrix, str)
         """
-        alphabet = ''.join(handle.next().strip('\n').split(','))
+        header = next(handle)
+        if type(header) is bytes:
+            header = header.decode('ascii')
+        alphabet = ''.join(header.strip('\n').split(','))
         rows = []
         for line in handle:
-            rows.append(map(int, line.strip('\n').split(',')))
+            if type(line) is bytes:
+                line = line.decode('ascii')
+            values = map(int, line.strip('\n').split(','))
+            rows.append(list(values))
         return np.array(rows, dtype=np.int32), alphabet
 
     def set_model(self, model):

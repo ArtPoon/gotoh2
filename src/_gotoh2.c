@@ -4,6 +4,28 @@
 #include <stdio.h>
 #include <limits.h>
 
+
+// using Python 3 migration instructions from
+//  https://docs.python.org/3/howto/cporting.html#module-initialization-and-state
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
+
+static PyObject * error_out(PyObject *m) {
+    struct module_state *st = GETSTATE(m);
+    PyErr_SetString(st->error, "This is probably a bad thing.");
+    return NULL;
+}
+
+
+
 struct align_settings {
     int is_global;
     int v;  // gap opening penalty
@@ -538,17 +560,67 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
     return retval;
 }
 
-static PyMethodDef AlignmentMethods [] =
+static PyMethodDef gotoh2_methods [] =
 {
-    {
-        "align", align_wrapper, METH_VARARGS,
-        "Pairwise alignment of nucleotide sequences."
-    },
+    {"align", align_wrapper, METH_VARARGS, "Pairwise alignment of nucleotide sequences."},
+    {"error_out", (PyCFunction)error_out, METH_NOARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 
-PyMODINIT_FUNC init_gotoh2 (void) {
-    (void) Py_InitModule("_gotoh2", AlignmentMethods);
+#if PY_MAJOR_VERSION >= 3
+
+static int gotoh2_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+
+static int gotoh2_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "gotoh2",
+    NULL,
+    sizeof(struct module_state),
+    gotoh2_methods,
+    NULL,
+    gotoh2_traverse,
+    gotoh2_clear,
+    NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC PyInit__gotoh2(void)
+
+#else
+#define INITERROR return
+
+void
+init_gotoh2 (void)
+#endif
+{
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("_gotoh2", gotoh2_methods);
+#endif
+
     import_array();  // required to avoid a segmentation fault
+
+    if (module == NULL) INITERROR;
+    struct module_state *st = GETSTATE(module);
+
+    st->error = PyErr_NewException("gotoh2.Error", NULL, NULL);
+    if (st->error == NULL) {
+        Py_DECREF(module);
+        INITERROR;
+    }
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }
 
