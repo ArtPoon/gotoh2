@@ -5,11 +5,18 @@ import re
 import pkg_resources as pkgres
 
 class Aligner():
-    def __init__(self):
+    def __init__(self, gop=10, gep=1, is_global=False, model='HYPHY_NUC'):
+        """
+        :param gop: Gap open penalty
+        :param gep: Gap extension penalty
+        :param is_global: if False, perform local alignment (no terminal gap penalties)
+        :param model: a named substitution model - must be present in models/ directory as CSV file
+        """
+
         # default settings
-        self.gap_open_penalty = 10
-        self.gap_extend_penalty = 1
-        self.is_global = True
+        self.gap_open_penalty = gop
+        self.gap_extend_penalty = gep
+        self.is_global = is_global
 
         # read models from files
         self.models = {}
@@ -22,7 +29,7 @@ class Aligner():
                 self.models.update({model_name: (mx, alpha)})
 
         # set default model
-        self.set_model('HYPHY_NUC')
+        self.set_model(model)
 
     def __str__(self):
         # TODO: display useful information about alignment settings
@@ -60,10 +67,6 @@ class Aligner():
         Main wrapper function that passes data and parameters to C function.
         :param seq1: First sequence to align.
         :param seq2: Second sequence to align.
-        :param gop: Gap open penalty.
-        :param gep: Gap extension penalty.
-        :param is_global: If False, perform local alignment.
-        :param model: Key in self.models
         :return:  (aligned seq1, aligned seq2, alignment score)
         """
         assert type(seq1) is str, 'seq1 must be a string'
