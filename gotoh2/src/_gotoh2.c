@@ -458,7 +458,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     edge_assignment(&my_matrices);
 
     // DEBUGGING - print cost matrix to screen
-    /*
+
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
             fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
@@ -466,7 +466,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
         fprintf(stdout, "\n");
     }
     fprintf(stdout, "\n");
-    */
+
 
     // TODO: 3. traceback
     align_score = traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);

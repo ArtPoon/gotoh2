@@ -26,7 +26,10 @@ class Aligner():
 
     def __str__(self):
         # TODO: display useful information about alignment settings
-        return self.__name__
+        output = str(self.alphabet)
+        output += '\n' + str(self.matrix)
+        output += 'Gap open penalty: {}\nGap extend penalty: {}\n'.format(self.gap_open_penalty, self.gap_extend_penalty)
+        return output
 
     def read_matrix_from_csv(self, handle):
         """
