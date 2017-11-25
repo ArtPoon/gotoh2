@@ -248,6 +248,27 @@ class TestIssues(TestAligner):
         self.g2.gap_open_penalty = 2
         self.g2.align(ref, query)
 
+    def test_issue14(self):
+        ref = 'GCA'
+        query = 'CA'
+        self.g2.is_global = True
+        self.g2.gap_open_penalty = 10
+        self.g2.gap_extend_penalty = 1
+        self.g2.set_model('HYPHY_NUC')
+        result = self.g2.align(ref, query)
+        expected = ('GCA', '-CA', -1)
+        self.assertEqual(expected, result)
+
+    def test_issue15(self):
+        ref = 'ERM'
+        query = 'ERM'
+        self.g2.is_global = False
+        self.g2.set_model('EmpHIV25')
+        self.g2.gap_open_penalty=40
+        self.g2.gap_extend_penalty=10
+        result = self.g2.align(ref, query)
+        expected = ('ERM', 'ERM', 24)
+        self.assertEqual(expected, result)
 
 if __name__ == '__main__':
     unittest.main()
