@@ -130,60 +130,61 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
     int i, j;  // row and column counters
     int here, up, left, diag;  // cache indices for linearized matrix
 
-    // iterate through cost matrix by diagonals
-    for (int offset=1; offset<mx->ncols+mx->nrows; offset++) {
-        j = offset;
-        for (i = 1; i < mx->nrows; i++) {
+    fprintf (stdout, "cost_assignment\n");
+
+    for (i=0; i < mx->nrows; i++) {
+        for (j=0; j < mx->ncols; j++) {
             here = i*mx->ncols + j;
-            up = here - mx->ncols;  // (i-1)*ncols + j
-            left = here - 1;  // i*ncols + (j-1)
-            diag = up - 1;  // (i-1)*ncols + (j-1)
+            up = here - mx->ncols;
+            left = here - 1;
+            diag = up - 1;
 
-            if (j < mx->ncols) {
-                mx->p[here] = set.u + min2(mx->R[up]+set.v, mx->p[up]);
-
-                // can cost P_{i,j} be achieved by edge V_{i-1,j}?
-                if (mx->p[here] == mx->p[up]+set.u) {
+            if (i > 0) {
+                mx->p[here] = set.u + min2(mx->p[up], mx->R[up]+set.v);
+                if (mx->p[here] == mx->p[up] + set.u) {
                     mx->bits[up] |= 8;  // set bit d(i-1,j) == 1
+                    //fprintf(stdout, "| %d | %d | %d | %d | d |\n", i, j, i-1, j);
                 }
-
-                // can P_{i,j} be achieved without using edge V_{i-1,j}?
-                if (mx->p[here] == mx->R[up]+set.u+set.v) {
+                if (mx->p[here] == mx->R[up] + set.v + set.u) {
                     mx->bits[up] |= 16;  // set bit e(i-1,j) == 1
-                }
-
-                // find minimum cost of path ending at i,j and using edge H_{i,j}
-                mx->q[here] = set.u + min2(mx->R[left]+set.v, mx->q[left]);
-
-                // can cost Q_{i,j} be achieved using edge H_{i,j-1}?
-                if (mx->q[here] == mx->q[left]+set.u) {
-                    mx->bits[left] |= 32;  // set bit f(i,j-1) == 1
-                }
-                if (mx->q[here] == mx->R[left]+set.u+set.v) {
-                    mx->bits[left] |= 64;  // set bit g(i,j-1) == 1
-                }
-
-                // find minimum cost of path ending at N_{i,j}
-                // note we subtract (d) from (R) because we are minimizing
-                mx->R[here] = min3(mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]],
-                               mx->p[here],
-                               mx->q[here]);
-
-                // can R_{i,j} be achieved using edges V_{i,j}, H_{i,j} or D_{i,j}?
-                if (mx->R[here] == mx->p[here]) {
-                    mx->bits[here] |= 1;  // set bit a(m,n) to 1
-                }
-                if (mx->R[here] == mx->q[here]) {
-                    mx->bits[here] |= 2;  // set bit b(m,n) to 1
-                }
-                if (mx->R[here] == mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]]){
-                    mx->bits[here] |= 4;  // set bit c(m,n) to 1
+                    //fprintf(stdout, "| %d | %d | %d | %d | e |\n", i, j, i-1, j);
                 }
             }
 
-            j -= 1;
-            if (j == 0) {
-                break;
+            if (j > 0) {
+                mx->q[here] = set.u + min2(mx->q[left], mx->R[left]+set.v);
+                if (mx->q[here] == mx->q[left] + set.u) {
+                    mx->bits[left] |= 32;  // set bit f(i,j-1) == 1
+                    //fprintf(stdout, "| %d | %d | %d | %d | f |\n", i, j, i, j-1);
+                }
+                if (mx->q[here] == mx->R[left] + set.v + set.u) {
+                    fprintf(stdout, "%d\n", mx->bits[left]);
+                    mx->bits[left] |= 64;  // set bit g(i,j-1) == 1
+                    fprintf(stdout, "%d\n", mx->bits[left]);
+                    //fprintf(stdout, "| %d | %d | %d | %d | g |\n", i, j, i, j-1);
+                }
+            }
+
+            if ((i==0 || j==0) && i!=j) {
+                // we're on the top row or left column, no diag in R
+                mx->R[here] = min2(mx->p[here], mx->q[here]);
+            } else {
+                mx->R[here] = min3(mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]],
+                                   mx->p[here],
+                                   mx->q[here]);
+            }
+
+            if (mx->R[here] == mx->p[here]) {
+                mx->bits[here] |= 1;  // set bit a(m,n) to 1
+                //fprintf (stdout, "| %d | %d | %d | %d | a |\n", i, j, i, j);
+            }
+            if (mx->R[here] == mx->q[here]) {
+                mx->bits[here] |= 2;  // set bit b(m,n) to 1
+                //fprintf (stdout, "| %d | %d | %d | %d | b |\n", i, j, i, j);
+            }
+            if (i>0 && j>0 && mx->R[here] == mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]]) {
+                mx->bits[here] |= 4;  // set bit c(m,n) to 1
+                //fprintf (stdout, "| %d | %d | %d | %d | c |\n", i, j, i, j);
             }
         }
     }
@@ -475,7 +476,18 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     // 2. generate D matrix
     // note we are passing align_matrices struct by reference to functions that will modify its contents
     initialize(&my_matrices, set);
+
+    fprintf (stdout, "Calling cost_assignment\n");
     cost_assignment(sA, sB, &my_matrices, set);
+    fprintf (stdout, "exited cost_assignment\n");
+
+    for (int i=0; i<l1+1; i++) {
+        for (int j=0; j<l2+1; j++) {
+            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+1) + j]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
 
     edge_assignment(&my_matrices);
 
@@ -483,7 +495,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
 
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
+            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+1) + j]);
         }
         fprintf(stdout, "\n");
     }
