@@ -239,10 +239,7 @@ class TestFlouri(TestAligner):
         self.g2.gap_open_penalty = 40
         self.g2.gap_extend_penalty = 1
         self.g2.set_model('Biopp2')  # +10 match, -30 mismatch
-        print(self.g2)
         a1, a2, score = self.g2.align('AAATTTGC', 'CGCCTTAC')
-        print a1, a2, score
-
 
 
 class TestIssues(TestAligner):
@@ -259,6 +256,33 @@ class TestIssues(TestAligner):
         # this reproducibly crashes!
         result = self.g2.align('ACGT', 'ACGTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
 
+    def test_issue14(self):
+        #ref = 'CA'
+        #query = 'A'
+        self.g2.is_global = True
+        self.g2.gap_open_penalty = 10
+        self.g2.gap_extend_penalty = 1
+        self.g2.set_model('HYPHY_NUC')
+        #result = self.g2.align(ref, query)
+        #expected = ('CA', '-A', -6)
+        #self.assertEqual(expected, result)
+
+        ref = 'GCA'
+        query = 'CA'
+        result = self.g2.align(ref, query)
+        expected = ('GCA', '-CA', -1)
+        self.assertEqual(expected, result)
+
+    def test_issue15(self):
+        ref = 'ERM'
+        query = 'ERM'
+        self.g2.is_global = False
+        self.g2.set_model('EmpHIV25')
+        self.g2.gap_open_penalty=40
+        self.g2.gap_extend_penalty=10
+        result = self.g2.align(ref, query)
+        expected = ('ERM', 'ERM', 24)
+        self.assertEqual(expected, result)
 
 if __name__ == '__main__':
     unittest.main()
