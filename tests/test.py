@@ -193,6 +193,7 @@ class TestAlignerLongerGlobal(TestAligner):
 class TestAlignerSimpleLocal(TestAligner):
     def runTest(self):
         self.g2.is_global = False
+
         aligned_ref, aligned_query, aligned_score = self.g2.align('TACGTA', 'ACGT')
         expected = 'TACGTA'
         self.assertEqual(expected, aligned_ref)
@@ -201,12 +202,6 @@ class TestAlignerSimpleLocal(TestAligner):
         expected = 20
         self.assertEqual(expected, aligned_score)
 
-class TestIssue5(TestAligner):
-    def runTest(self):
-        # this runs ok
-        result = self.g2.align('ACGTT', 'ACGT')
-        # this reproducibly crashes! no longer
-        result = self.g2.align('ACGT', 'ACGTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
 
 class TestFlouri(TestAligner):
     """
@@ -251,21 +246,15 @@ class TestIssues(TestAligner):
         self.g2.align(ref, query)
 
     def test_issue5(self):
-        # this runs ok
-        result = self.g2.align('ACGTT', 'ACGT')
+        self.g2.is_global = True
         # this reproducibly crashes!
-        result = self.g2.align('ACGT', 'ACGTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
+        result = self.g2.align('AT', 'ATTTTTT')
 
     def test_issue14(self):
-        #ref = 'CA'
-        #query = 'A'
         self.g2.is_global = True
         self.g2.gap_open_penalty = 10
         self.g2.gap_extend_penalty = 1
         self.g2.set_model('HYPHY_NUC')
-        #result = self.g2.align(ref, query)
-        #expected = ('CA', '-A', -6)
-        #self.assertEqual(expected, result)
 
         ref = 'GCA'
         query = 'CA'
@@ -273,6 +262,7 @@ class TestIssues(TestAligner):
         expected = ('GCA', '-CA', -1)
         self.assertEqual(expected, result)
 
+    @unittest.skip  # this model hasn't been pushed to repo yet
     def test_issue15(self):
         ref = 'ERM'
         query = 'ERM'
