@@ -202,6 +202,13 @@ class TestAlignerSimpleLocal(TestAligner):
         expected = 20
         self.assertEqual(expected, aligned_score)
 
+class TestHIV(TestAligner):
+    def runTest(self):
+        self.g2.is_global = False
+        aref, aquery, _ = self.g2.align(self.nl43, self.hxb2_rt)
+        result = aquery[:466]
+        expected = '-'*465 + 'C'
+        self.assertEqual(expected, result)
 
 class TestFlouri(TestAligner):
     """
@@ -245,7 +252,7 @@ class TestIssues(TestAligner):
         self.g2.gap_open_penalty = 2
         self.g2.align(ref, query)
 
-    def test_issue5(self):
+    def test_issue16(self):
         self.g2.set_model('HYPHY_NUC')
         self.g2.is_global = True
         self.g2.gap_open_penalty = 5
@@ -262,7 +269,8 @@ class TestIssues(TestAligner):
 
         self.g2.gap_open_penalty = 5
         result = self.g2.align('A', 'ATTTTT')
-        # throws error
+        expected =  ('A-----', 'ATTTTT', 5)
+        self.assertEqual(expected, result)
 
 
     def test_issue14(self):
