@@ -246,9 +246,24 @@ class TestIssues(TestAligner):
         self.g2.align(ref, query)
 
     def test_issue5(self):
+        self.g2.set_model('HYPHY_NUC')
         self.g2.is_global = True
-        # this reproducibly crashes!
+        self.g2.gap_open_penalty = 5
+        self.g2.gap_extend_penalty = 1
+
         result = self.g2.align('AT', 'ATTTTTT')
+        expected = ('AT-----', 'ATTTTTT', 5+5 -5-1 -1*4)
+        self.assertEqual(expected, result)
+
+        self.g2.is_global = False
+        result = self.g2.align('AT', 'ATTTTT')
+        expected = ('AT----', 'ATTTTT', 10)
+        self.assertEqual(expected, result)
+
+        self.g2.gap_open_penalty = 5
+        result = self.g2.align('A', 'ATTTTT')
+        # throws error
+
 
     def test_issue14(self):
         self.g2.is_global = True

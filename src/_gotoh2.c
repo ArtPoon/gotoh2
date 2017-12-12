@@ -118,6 +118,12 @@ void initialize(struct align_matrices * mx, struct align_settings set) {
     for (i = 0; i < mx->nrows+1; i++) {
         for (j = 0; j < mx->ncols+1; j++) {
             mx->bits[(i * (mx->ncols+1)) + j] = 0;
+            if (!set.is_global && i == mx->nrows) {
+                mx->bits[(i * (mx->ncols+1)) + j] = 4;
+            }
+            if (!set.is_global && j == mx->ncols) {
+                mx->bits[(i * (mx->ncols+1)) + j] = 4;
+            }
         }
     }
 
@@ -198,7 +204,7 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
 
 // steps 8 through 11 inclusive of Altschul-Erickson algorithm
 void edge_assignment(struct align_matrices * mx) {
-    // bits: linearized matrix storing traceback bits
+    // bits: linearized matrix storing traceback bits (dimension nrows+1 x ncols+1)
     //    e.g.,   0010010 = 18
     //            gfedcba
     int i, j;  // row, column indices
@@ -211,14 +217,14 @@ void edge_assignment(struct align_matrices * mx) {
     for (i = nrows-1; i >= 0; i--) {
         for (j = ncols-1; j >= 0; j--) {
             here = i*(ncols+1) + j;
-            down = here + (ncols+1);  // (i+1)*ncols + j
-            right = here + 1;  // i*ncols + (j+1)
-            diag = down + 1;  // (i+1)*ncols + (j+1)
+            down = here + (ncols+1);  // (i+1)*(ncols+1) + j
+            right = here + 1;  // i*(ncols+1) + (j+1)
+            diag = down + 1;  // (i+1)*(ncols+1) + (j+1)
 
             // reset conditions
             cond1 = cond2 = cond3 = cond4 = cond5 = 0;
 
-            if ( !(bits[down]&1) )  cond1 = 1;  // a[i+1,j] is 0
+            if ( !(bits[down] & 1) )  cond1 = 1;  // a[i+1,j] is 0
 
             if ( !(bits[here] & (1<<4)) )  cond2 = 1;  // e[i,j] is 0
 
@@ -233,6 +239,7 @@ void edge_assignment(struct align_matrices * mx) {
                 bits[here] &= ~1;  // set a[i,j] to 0
                 bits[here] &= ~(1<<1);  // set b[i,j] to 0
                 bits[here] &= ~(1<<2);  // set c[i,j] to 0
+                //fprintf(stdout, "8: i=%d j=%d set a,b,c to 0\n", i, j);
             }
 
             // step 9. if a[i+1,j] == b[i,j+1] == c[i+1,j+1] == 0
@@ -246,23 +253,30 @@ void edge_assignment(struct align_matrices * mx) {
                     // set d[i+1,j] to 1-e[i,j]
                     if (bits[here]&(1<<4)) {
                         bits[down] &= ~(1<<3); // d to 0
+                        //fprintf(stdout, "10: i=%d j=%d set d(%d,%d) to 0\n", i, j, i+1, j);
                     } else {
                         bits[down] |= (1<<3); // d to 1
+                        //fprintf(stdout, "10: i=%d j=%d set d(%d,%d) to 1\n", i, j, i+1, j);
                     }
 
                     // set e[i,j] to 1-a[i,j]
                     if (bits[here]&1) {
                         bits[here] &= ~(1<<4);  // e to 0
+                        //fprintf(stdout, "10: i=%d j=%d set e(%d,%d) to 0\n", i, j, i, j);
                     } else {
                         bits[here] |= (1<<4);  // e to 1
+                        //fprintf(stdout, "10: i=%d j=%d set e(%d,%d) to 1\n", i, j, i, j);
                     }
 
                     // set a[i,j] to 1
                     bits[here] |= 1;
+                    //fprintf(stdout, "10: i=%d j=%d set a(%d,%d) to 1\n", i, j, i, j);
                 } else {
                     // otherwise, set d[i+1,j] and e[i,j] to 0
                     bits[down] &= ~(1<<3);
+                    //fprintf(stdout, "10: i=%d j=%d set d(%d,%d) to 0\n", i, j, i+1, j);
                     bits[here] &= ~(1<<4);
+                    //fprintf(stdout, "10: i=%d j=%d set e(%d,%d) to 0\n", i, j, i, j);
                 }
 
                 // step 11
@@ -271,21 +285,28 @@ void edge_assignment(struct align_matrices * mx) {
                     // set f[i,j+1] to 1-g[i,j]
                     if (bits[here]&(1<<6)) {
                         bits[right] &= ~(1<<5);  // f to 0
+                        //fprintf(stdout, "11: i=%d j=%d set f(%d,%d) to 0\n", i, j, i, j+1);
                     } else {
                         bits[right] |= (1<<5);  // f to 1
+                        //fprintf(stdout, "11: i=%d j=%d set f(%d,%d) to 1\n", i, j, i, j+1);
                     }
                     // set g[i,j] to 1-b[i,j]
                     if (bits[here]&(1<<1)) {
                         bits[here] &= ~(1<<6);  // g to 0
+                        //fprintf(stdout, "11: i=%d j=%d set g(%d,%d) to 0\n", i, j, i, j);
                     } else {
                         bits[here] |= (1<<6);  // g to 1
+                        //fprintf(stdout, "11: i=%d j=%d set g(%d,%d) to 1\n", i, j, i, j);
                     }
                     // set b[i,j] to 1
                     bits[here] |= (1<<1);
+                    //fprintf(stdout, "11: i=%d j=%d set b(%d,%d) to 1\n", i, j, i, j);
                 } else {
                     // otherwise set f[i,j+1] and g[i,j] to 0
                     bits[right] &= ~(1<<5);
                     bits[here] &= ~(1<<6);
+                    //fprintf(stdout, "11: i=%d j=%d set f(%d,%d) to 0\n", i, j, i, j+1);
+                    //fprintf(stdout, "11: i=%d j=%d set g(%d,%d) to 0\n", i, j, i, j);
                 }
             }
         }
@@ -335,7 +356,6 @@ int traceback(struct align_matrices mx, struct align_settings set,
     }
     i = init_i;
     j = init_j;
-    fprintf(stdout, "init_i %d, init_j %d\n", init_i, init_j);
 
     // pad right side of alignment if local
     if (i < nrows-1) {
@@ -358,21 +378,21 @@ int traceback(struct align_matrices mx, struct align_settings set,
         // TODO: instead of mutual exclusion, store all optimal paths
         if (mx.bits[here]&1) {  // a[i,j]==1
             // an optimal path uses V(i,j)
-            fprintf(stdout, "%d %d V\n", i, j);
+            //fprintf(stdout, "%d %d V\n", i, j);
             aligned1[alen] = seq1[i-1];
             aligned2[alen] = '-';
             i--;
         }
         else if (mx.bits[here]&(1<<1)) {  // b[i,j]==1
             // an optimal path uses H(i,j)
-            fprintf(stdout, "%d %d H\n", i, j);
+            //fprintf(stdout, "%d %d H\n", i, j);
             aligned1[alen] = '-';
             aligned2[alen] = seq2[j-1];
             j--;
         }
         else if (mx.bits[here]&(1<<2)) {  // c[i,j]==1
             // an optimal path uses D(i,j)
-            fprintf(stdout, "%d %d D\n", i, j);
+            //fprintf(stdout, "%d %d D\n", i, j);
             aligned1[alen] = seq1[i-1];
             aligned2[alen] = seq2[j-1];
             i--;
@@ -381,7 +401,7 @@ int traceback(struct align_matrices mx, struct align_settings set,
         else {
             // no optimal path, raise exception
             fprintf(stdout, "traceback failed: i=%d j=%d bit=%d\n", i, j, mx.bits[here]);
-            return (NULL);
+            return (-INT_MAX);
         }
         alen++;
     }
@@ -469,10 +489,9 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     // note we are passing align_matrices struct by reference to functions that will modify its contents
     initialize(&my_matrices, set);
     cost_assignment(sA, sB, &my_matrices, set);
-    edge_assignment(&my_matrices);
 
     // DEBUGGING - print cost matrix to screen
-
+    /*
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
             fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
@@ -481,6 +500,26 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     }
     fprintf(stdout, "\n");
 
+    for (int i=0; i<l1+2; i++) {
+        for (int j=0; j<l2+2; j++) {
+            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+2) + j]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
+    */
+
+    edge_assignment(&my_matrices);
+
+    /*
+    for (int i=0; i<l1+2; i++) {
+        for (int j=0; j<l2+2; j++) {
+            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+2) + j]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
+    */
 
     // TODO: 3. traceback
     align_score = traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);
@@ -532,19 +571,9 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
     }
     my_settings.d = (int *) PyArray_DATA(ndarray);
 
-    /*
-     // display contents of matrix
-    for (int i=0; i<my_settings.alphabet_length; i++) {
-        for (int j=0; j<my_settings.alphabet_length; j++) {
-            fprintf (stdout, "%1.1f ", my_settings.score_matrix[i*my_settings.alphabet_length + j]);
-        }
-        fprintf(stdout, "\n");
-    }
-    */
-
     // call align function
     my_output = align(seq1, seq2, my_settings);
-    if (my_output.alignment_score == NULL) {
+    if (my_output.alignment_score == -INT_MAX) {
         PyErr_SetString(PyExc_RuntimeError, "Traceback failed, try local alignment");
         return NULL;
     }
