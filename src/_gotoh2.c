@@ -137,7 +137,7 @@ void initialize(struct align_matrices * mx, struct align_settings set) {
 void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_settings set) {
     int i, j;  // row and column counters
     int here, up, left, diag;  // cache indices for linearized matrix
-    int here2, up2, left2, diag2;
+    int here2, up2, left2;
 
     for (i=0; i < mx->nrows; i++) {
         for (j=0; j < mx->ncols; j++) {
@@ -151,7 +151,6 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
             here2 = i*(mx->ncols+1) + j;
             up2 = here2 - (mx->ncols+1);
             left2 = here2 - 1;
-            diag2 =  up2 - 1;
 
             if (i > 0) {
                 mx->p[here] = set.u + min2(mx->p[up], mx->R[up]+set.v);
@@ -322,16 +321,13 @@ int traceback(struct align_matrices mx, struct align_settings set,
     int nrows = mx.nrows,
         ncols = mx.ncols;
     int i, j, here;  // index for linearized matrix
-    int init_i, init_j;
-    int score,  min_score = INT_MAX;
+    int init_i = nrows-1, 
+        init_j = ncols-1;
+    int score,  
+        min_score = mx.R[init_i*ncols + init_j];
     int alen = 0;  // track length of pairwise alignment
 
-    if (set.is_global) {
-        // start at lower-right cell if global
-        init_i = nrows-1;
-        init_j = ncols-1;
-        min_score = mx.R[init_i*ncols + init_j];
-    } else {
+    if (!set.is_global) {
         // search right-most column
         for (i=0; i < nrows; i++) {
             here = i*ncols + (ncols-1);
