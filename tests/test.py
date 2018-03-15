@@ -1,6 +1,7 @@
 import unittest
 from gotoh2 import Aligner
 
+
 class TestAligner(unittest.TestCase):
     def setUp(self):
         self.g2 = Aligner()
@@ -177,8 +178,9 @@ class TestAlignerSimpleGlobal(TestAligner):
         self.assertEqual(expected, aligned_ref)
         expected = 'AC-T'
         self.assertEqual(expected, aligned_query)
-        expected = 5+5+(-5-1)+5  # 9
+        expected = 5 + 5 + (-5 - 1) + 5  # 9
         self.assertEqual(expected, aligned_score)
+
 
 class TestAlignerLongerGlobal(TestAligner):
     def runTest(self):
@@ -187,9 +189,11 @@ class TestAlignerLongerGlobal(TestAligner):
         self.assertEqual(expected, aquery)
         # TODO: run progressively longer sequences
 
+
 class TestAlignerSimpleLocal(TestAligner):
     def runTest(self):
         self.g2.is_global = False
+
         aligned_ref, aligned_query, aligned_score = self.g2.align('TACGTA', 'ACGT')
         expected = 'TACGTA'
         self.assertEqual(expected, aligned_ref)
@@ -198,17 +202,19 @@ class TestAlignerSimpleLocal(TestAligner):
         expected = 20
         self.assertEqual(expected, aligned_score)
 
-class TestIssue5(TestAligner):
+class TestHIV(TestAligner):
     def runTest(self):
-        # this runs ok
-        result = self.g2.align('ACGTT', 'ACGT')
-        # this reproducibly crashes! no longer
-        result = self.g2.align('ACGT', 'ACGTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
+        self.g2.is_global = False
+        aref, aquery, _ = self.g2.align(self.nl43, self.hxb2_rt)
+        result = aquery[:466]
+        expected = '-'*465 + 'C'
+        self.assertEqual(expected, result)
 
 class TestFlouri(TestAligner):
     """
     Evaluate test cases described in Flouri et al. bioRxiv 031500
     """
+
     def test_NWalign_example(self):
         self.g2.is_global = True
         self.g2.gap_open_penalty = 10
@@ -219,7 +225,7 @@ class TestFlouri(TestAligner):
         expected = -3
         self.assertEqual(expected, result)
 
-    def test_Biopp_example(self):
+    def test_Biopp_example1(self):
         self.g2.is_global = True
         self.g2.gap_open_penalty = 5
         self.g2.gap_extend_penalty = 1
@@ -230,14 +236,12 @@ class TestFlouri(TestAligner):
         # there appear to be multiple solutions with same score
         self.assertEqual(expected, score)
 
-
-class TestHIV(TestAligner):
-    def test_pol(self):
+    def test_Biopp_example2(self):
         self.g2.is_global = True
-        _ = self.g2.align(self.hxb2_rt, self.nl43)
-
-        self.g2.is_global = False
-        result = self.g2.align(self.hxb2_rt, self.nl43)
+        self.g2.gap_open_penalty = 40
+        self.g2.gap_extend_penalty = 1
+        self.g2.set_model('Biopp2')  # +10 match, -30 mismatch
+        a1, a2, score = self.g2.align('AAATTTGC', 'CGCCTTAC')
 
 
 class TestIssues(TestAligner):
@@ -248,17 +252,40 @@ class TestIssues(TestAligner):
         self.g2.gap_open_penalty = 2
         self.g2.align(ref, query)
 
+    def test_issue16(self):
+        self.g2.set_model('HYPHY_NUC')
+        self.g2.is_global = True
+        self.g2.gap_open_penalty = 5
+        self.g2.gap_extend_penalty = 1
+
+        result = self.g2.align('AT', 'ATTTTTT')
+        expected = ('AT-----', 'ATTTTTT', 5+5 -5-1 -1*4)
+        self.assertEqual(expected, result)
+
+        self.g2.is_global = False
+        result = self.g2.align('AT', 'ATTTTT')
+        expected = ('AT----', 'ATTTTT', 10)
+        self.assertEqual(expected, result)
+
+        self.g2.gap_open_penalty = 5
+        result = self.g2.align('A', 'ATTTTT')
+        expected =  ('A-----', 'ATTTTT', 5)
+        self.assertEqual(expected, result)
+
+
     def test_issue14(self):
-        ref = 'GCA'
-        query = 'CA'
         self.g2.is_global = True
         self.g2.gap_open_penalty = 10
         self.g2.gap_extend_penalty = 1
         self.g2.set_model('HYPHY_NUC')
+
+        ref = 'GCA'
+        query = 'CA'
         result = self.g2.align(ref, query)
         expected = ('GCA', '-CA', -1)
         self.assertEqual(expected, result)
 
+    @unittest.skip  # this model hasn't been pushed to repo yet
     def test_issue15(self):
         ref = 'ERM'
         query = 'ERM'

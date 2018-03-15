@@ -1,2 +1,2 @@
-cd tests; python -m unittest discover
+cd tests; python3 -m unittest discover
 
