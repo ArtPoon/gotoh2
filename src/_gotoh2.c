@@ -315,6 +315,8 @@ int traceback(struct align_matrices mx, struct align_settings set,
     int score,  min_score = INT_MAX;
     int alen = 0;  // track length of pairwise alignment
 
+    //fprintf(stdout, "init min_score: %d\n", min_score);
+
     if (set.is_global) {
         // start at lower-right cell if global
         init_i = nrows-1;
@@ -325,6 +327,7 @@ int traceback(struct align_matrices mx, struct align_settings set,
         for (i=0; i < nrows; i++) {
             here = i*ncols + (ncols-1);
             score = mx.R[here];
+            //fprintf(stdout, "i=%d score=%d\n", i, score);
             if (score < min_score) {
                 init_i = i;
                 init_j = ncols-1;
@@ -335,6 +338,7 @@ int traceback(struct align_matrices mx, struct align_settings set,
         for (j=0; j < ncols; j++) {
             here = (nrows-1)*ncols + j;
             score = mx.R[here];
+            //fprintf(stdout, "j=%d score=%d\n", j, score);
             if (score < min_score) {
                 init_i = nrows-1;
                 init_j = j;
@@ -343,6 +347,10 @@ int traceback(struct align_matrices mx, struct align_settings set,
         }
         // TODO: min_score may be achieved by more than one starting point
     }
+
+    //fprintf(stdout, "min_score: %d\n", min_score);
+    //fprintf(stdout, "NULL: %d\n", NULL);
+
     i = init_i;
     j = init_j;
 
@@ -483,7 +491,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     /*
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
+            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+1) + j]);
         }
         fprintf(stdout, "\n");
     }
@@ -544,7 +552,7 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
      // display contents of matrix
     for (int i=0; i<my_settings.alphabet_length; i++) {
         for (int j=0; j<my_settings.alphabet_length; j++) {
-            fprintf (stdout, "%1.1f ", my_settings.score_matrix[i*my_settings.alphabet_length + j]);
+            fprintf (stdout, "%1.1f ", my_settings.d[i*my_settings.alphabet_length + j]);
         }
         fprintf(stdout, "\n");
     }

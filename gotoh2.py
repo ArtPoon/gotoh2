@@ -51,11 +51,14 @@ class Aligner():
                 line = line.decode('ascii')
             values = map(int, line.strip('\n').split(','))
             rows.append(list(values))
+
         return np.array(rows, dtype=np.int32), alphabet
 
     def set_model(self, model):
         if model in self.models:
             self.matrix, self.alphabet = self.models[model]
+        else:
+            print('ERROR: Unrecognized model name {}'.format(model))
 
     def clean_sequence(self, seq):
         # replace all non-alphabet characters with ambiguous symbol
