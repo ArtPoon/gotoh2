@@ -25,7 +25,11 @@ class Aligner():
         for f in files:
             model_name = f.replace('.csv', '')
             with pkgres.resource_stream('gotoh2', '/'.join(['models', f])) as handle:
-                mx, alpha = self.read_matrix_from_csv(handle)
+                try:
+                    mx, alpha = self.read_matrix_from_csv(handle)
+                except:
+                    print('Error importing matrix from file {}'.format(f))
+                    raise
                 self.models.update({model_name: (mx, alpha)})
 
         # set default model
