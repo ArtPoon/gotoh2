@@ -61,6 +61,7 @@ class Aligner():
         return rows, alphabet
         #return np.array(rows, dtype=np.int32), alphabet
 
+
     def set_model(self, model):
         if model in self.models:
             self.matrix, self.alphabet = self.models[model]
