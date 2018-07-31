@@ -41,5 +41,5 @@ In summary, `gotoh2` is a lot faster than the pairwise sequence alignment algori
 
 ## Requirements
 * [Python](https://www.python.org/downloads/) - not sure about version support yet; this was developed in Python 2.7.
-* [NumPy](http://www.numpy.org/) - my next objective is to eliminate this requirement
+* ~[NumPy](http://www.numpy.org/) - my next objective is to eliminate this requirement~
 * [A build environment including gcc](https://en.wikipedia.org/wiki/GNU_Compiler_Collection), at least until I figure out how to distribute binaries
