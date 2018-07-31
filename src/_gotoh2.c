@@ -332,6 +332,7 @@ int traceback(struct align_matrices mx, struct align_settings set,
         for (i=0; i < nrows; i++) {
             here = i*ncols + (ncols-1);
             score = mx.R[here];
+            //fprintf(stdout, "i=%d score=%d\n", i, score);
             if (score < min_score) {
                 init_i = i;
                 init_j = ncols-1;
@@ -342,6 +343,7 @@ int traceback(struct align_matrices mx, struct align_settings set,
         for (j=0; j < ncols; j++) {
             here = (nrows-1)*ncols + j;
             score = mx.R[here];
+            //fprintf(stdout, "j=%d score=%d\n", j, score);
             if (score < min_score) {
                 init_i = nrows-1;
                 init_j = j;
@@ -350,6 +352,10 @@ int traceback(struct align_matrices mx, struct align_settings set,
         }
         // TODO: min_score may be achieved by more than one starting point
     }
+
+    //fprintf(stdout, "min_score: %d\n", min_score);
+    //fprintf(stdout, "NULL: %d\n", NULL);
+
     i = init_i;
     j = init_j;
 
@@ -490,7 +496,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     /*
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
+            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+1) + j]);
         }
         fprintf(stdout, "\n");
     }
@@ -545,7 +551,7 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
     struct align_output my_output;
 
     PyObject * obj = NULL;  // variables for parsing array from Python NumPy object
-    PyObject * ndarray = NULL;
+    PyObject * iter = NULL;
 
     if (!PyArg_ParseTuple(args, "ssiiisO", &seq1, &seq2, &gop, &gep, &is_global, &alphabet, &obj)) {
         return NULL;
@@ -560,12 +566,35 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
 
     //fprintf (stdout, "my_settings.alphabet = %s\n", my_settings.alphabet);
 
+    // parse array
+    iter = PyObject_GetIter(obj);
+    if (!iter) {
+        fprintf(stdout, "PyObject_GetIter failed!\n");
+    }
+
+    int ndarray [my_settings.l * my_settings.l];
+    int count = 0;
+    while(1) {
+        PyObject * next = PyIter_Next(iter);
+        if (!next) {
+            break;  // end of iterator
+        }
+        if (!PyLong_Check(next)) {
+            fprintf(stdout, "Non-integer in iterator!\n");
+        }
+        ndarray[count] = (int) PyLong_AsLong(next);
+        //fprintf(stdout, "%d %d\n", count, ndarray[count]);
+        count++;
+    }
+    my_settings.d = ndarray;
+    /*
     // parse NumPy array
     ndarray = PyArray_FROM_OTF(obj, NPY_INT, NPY_IN_ARRAY);
     if (ndarray == NULL) {
         return NULL;
     }
     my_settings.d = (int *) PyArray_DATA(ndarray);
+    */
 
     // call align function
     my_output = align(seq1, seq2, my_settings);

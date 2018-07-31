@@ -1,5 +1,5 @@
 import _gotoh2
-import numpy as np
+#import numpy as np
 import os
 import re
 import pkg_resources as pkgres
@@ -25,7 +25,11 @@ class Aligner():
         for f in files:
             model_name = f.replace('.csv', '')
             with pkgres.resource_stream('gotoh2', '/'.join(['models', f])) as handle:
-                mx, alpha = self.read_matrix_from_csv(handle)
+                try:
+                    mx, alpha = self.read_matrix_from_csv(handle)
+                except:
+                    print('Error importing matrix from file {}'.format(f))
+                    raise
                 self.models.update({model_name: (mx, alpha)})
 
         # set default model
@@ -53,12 +57,15 @@ class Aligner():
             if type(line) is bytes:
                 line = line.decode('ascii')
             values = map(int, line.strip('\n').split(','))
-            rows.append(list(values))
-        return np.array(rows, dtype=np.int32), alphabet
+            rows.extend(list(values))
+        return rows, alphabet
+        #return np.array(rows, dtype=np.int32), alphabet
 
     def set_model(self, model):
         if model in self.models:
             self.matrix, self.alphabet = self.models[model]
+        else:
+            print('ERROR: Unrecognized model name {}'.format(model))
 
     def clean_sequence(self, seq):
         # replace all non-alphabet characters with ambiguous symbol
