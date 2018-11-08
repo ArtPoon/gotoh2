@@ -1,5 +1,5 @@
 from setuptools import setup, Extension
-import numpy as np
+#import numpy as np
 
 setup (name = 'gotoh2',
        version = '0.1',
@@ -10,6 +10,6 @@ setup (name = 'gotoh2',
                                   'models/NWALIGN.csv',
                                   'models/Biopp.csv',
                                   'models/EmpHIV25.csv'])],
-       include_dirs = [np.get_include()],
+       #include_dirs = [np.get_include()],
        zip_safe = False  #avoid headache with permissions on ~/.python-eggs
 )

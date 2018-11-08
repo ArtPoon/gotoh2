@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "numpy/arrayobject.h"
+//#include "numpy/arrayobject.h"
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
