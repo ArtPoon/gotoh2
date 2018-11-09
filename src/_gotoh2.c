@@ -579,9 +579,9 @@ static PyObject * align_wrapper(PyObject * self, PyObject * args) {
         if (!next) {
             break;  // end of iterator
         }
-        if (!PyLong_Check(next)) {
-            fprintf(stdout, "Non-integer in iterator!\n");
-        }
+        //if (!PyLong_Check(next)) {
+        //    fprintf(stdout, "Non-integer in iterator!\n");
+        //}
         ndarray[count] = (int) PyLong_AsLong(next);
         //fprintf(stdout, "%d %d\n", count, ndarray[count]);
         count++;
@@ -654,7 +654,7 @@ init_gotoh2 (void)
     PyObject *module = Py_InitModule("_gotoh2", gotoh2_methods);
 #endif
 
-    import_array();  // required to avoid a segmentation fault
+    //import_array();  // required to avoid a segmentation fault
 
     if (module == NULL) INITERROR;
     struct module_state *st = GETSTATE(module);
