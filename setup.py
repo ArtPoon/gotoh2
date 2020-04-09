@@ -4,7 +4,7 @@ from setuptools import setup, Extension
 setup (name = 'gotoh2',
        version = '0.1',
        description = "C implementation of Gotoh pairwise alignment algorithm to be wrapped in Python",
-       py_modules = ['gotoh2'],
+       py_modules = ['gotoh2', 'utils'],
        ext_modules = [Extension('_gotoh2', sources = ['src/_gotoh2.c'])],
        data_files = [('models/', ['models/HYPHY_NUC.csv',
                                   'models/NWALIGN.csv',

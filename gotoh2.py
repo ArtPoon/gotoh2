@@ -1,8 +1,10 @@
 import _gotoh2
-#import numpy as np
-import os
 import re
 import pkg_resources as pkgres
+from gotoh2 import utils
+import math
+import argparse
+
 
 class Aligner():
     def __init__(self, gop=10, gep=1, is_global=False, model='HYPHY_NUC'):
@@ -58,9 +60,8 @@ class Aligner():
                 line = line.decode('ascii')
             values = map(int, line.strip('\n').split(','))
             rows.extend(list(values))
-        return rows, alphabet
-        #return np.array(rows, dtype=np.int32), alphabet
 
+        return rows, alphabet
 
     def set_model(self, model):
         if model in self.models:
@@ -69,7 +70,11 @@ class Aligner():
             print('ERROR: Unrecognized model name {}'.format(model))
 
     def clean_sequence(self, seq):
-        # replace all non-alphabet characters with ambiguous symbol
+        """
+        Replace all non-alphabet characters with ambiguous symbol.
+        :param seq:  str, sequence
+        :return:  str
+        """
         return re.sub(pattern='[^%s]' % (self.alphabet,), repl='?', string=seq.upper())
 
     def align(self, seq1, seq2):
@@ -95,3 +100,97 @@ class Aligner():
             self.matrix
         )
         return results
+
+
+def procrust_align(ref, query, aligner):
+    """
+    Procrustean alignment of query against reference.  Any insertions in the query
+    relative to the reference are excised and returned separately.  Filters
+    sequences with low alignment scores (when scaled to sequence length, a good
+    score should be around 5.0 for HYPHY_NUC - the minimum is 0).
+
+    :param ref:  str, reference sequence
+    :param query:  str, query sequence
+    :param aligner:  gotoh2.Aligner object
+    :return: str, list, float - aligned and trimmed query, list of insertions,
+             and normalized alignment score
+    """
+    aref, aquery, ascore = aligner.align(ref, query)
+    norm_score = ascore / len(aref)
+
+    # if query is longer than reference, do not count terminal gaps as insertions
+    left, right = utils.len_terminal_gaps(aref)
+
+    trim_seq = ''
+    inserts = []
+    for i in range(left, len(aref)-right):
+        rn = aref[i]
+        qn = aquery[i]
+        if rn == '-':
+            # insertion relative to reference
+            inserts.append((i, qn))
+            continue
+        trim_seq += qn
+
+    return trim_seq, inserts, norm_score
+
+
+def codon_align(ref, query, paligner):
+    """
+    Codon-aware alignment of query to reference sequence.
+
+    :param ref:  str, reference sequence - must be in reading frame
+    :param query:  str, query sequence to align
+    :param paligner:  gotoh2.Aligner() object configured for protein
+                      sequences, i.e., Aligner(gop=5, model='EmpHIV25')
+    :return:
+    """
+    refp = utils.translate_nuc(ref, 0)
+    max_score = -math.inf
+    br = ''  # best ref
+    bq = ''  # best query
+    bo = 0   # best offset
+
+    # determine reading frame of query
+    for offset in range(3):
+        p = utils.translate_nuc(query, offset)
+        aref, aquery, ascore = paligner.align(refp, p)
+        if ascore > max_score:
+            max_score = ascore
+            br, bq, bo = aref, aquery, offset
+
+    # apply AA alignment to nucleotide sequence
+    r = utils.apply_prot_to_nuc(br, ref)
+    q = utils.apply_prot_to_nuc(bq, '-'*bo + query)
+
+    # excise overlapping region from query sequence
+    left, right = utils.get_boundaries(r)
+    trimmed = q[left:right]
+
+    return trimmed, max_score
+
+
+if __name__ == '__main__':
+    """
+    Command line interface
+    """
+    parser = argparse.ArgumentParser(
+        description="Pairwise sequence alignment utilities for Python"
+    )
+
+    parser.add_argument('in', type=argparse.FileType('r'),
+                        help="input, FASTA-formatted file")
+    parser.add_argument('ref', type=argparse.FileType('r'),
+                        help="input, plain text file with reference sequence")
+
+    parser.add_argument('out', required=False, type=argparse.FileType('w'),
+                        help="output, destination file for alignment;"
+                             "defaults to stdout.")
+
+    parser.add_argument('-aa', action='store_true',
+                        help="Inputs and reference are amino acid sequences.")
+    parser.add_argument('--codon', action='store_true',
+                        help="Codon-wise alignment of nucleotide sequences.")
+
+    args = parser.parse_args()
+    
