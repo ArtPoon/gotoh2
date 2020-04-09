@@ -1,9 +1,9 @@
 import _gotoh2
-import re
 import pkg_resources as pkgres
-from gotoh2 import utils
+from gotoh2_utils import *
 import math
 import argparse
+import sys
 
 
 class Aligner():
@@ -119,7 +119,7 @@ def procrust_align(ref, query, aligner):
     norm_score = ascore / len(aref)
 
     # if query is longer than reference, do not count terminal gaps as insertions
-    left, right = utils.len_terminal_gaps(aref)
+    left, right = len_terminal_gaps(aref)
 
     trim_seq = ''
     inserts = []
@@ -145,29 +145,57 @@ def codon_align(ref, query, paligner):
                       sequences, i.e., Aligner(gop=5, model='EmpHIV25')
     :return:
     """
-    refp = utils.translate_nuc(ref, 0)
+    refp = translate_nuc(ref, 0)
     max_score = -math.inf
-    br = ''  # best ref
-    bq = ''  # best query
-    bo = 0   # best offset
+    br, bq, bo = '', '', 0  # best ref, query and offset
 
     # determine reading frame of query
     for offset in range(3):
-        p = utils.translate_nuc(query, offset)
+        p = translate_nuc(query, offset)
         aref, aquery, ascore = paligner.align(refp, p)
         if ascore > max_score:
             max_score = ascore
             br, bq, bo = aref, aquery, offset
 
     # apply AA alignment to nucleotide sequence
-    r = utils.apply_prot_to_nuc(br, ref)
-    q = utils.apply_prot_to_nuc(bq, '-'*bo + query)
+    r = apply_prot_to_nuc(br, ref)
+    q = apply_prot_to_nuc(bq, '-'*bo + query)
 
     # excise overlapping region from query sequence
-    left, right = utils.get_boundaries(r)
+    left, right = get_boundaries(r)
     trimmed = q[left:right]
 
     return trimmed, max_score
+
+
+def update_alignment(ref, src, dest, aligner):
+    """
+    Stream sequences from <src> file, check if they are already
+    present in <dest> file, and if not do pairwise alignment to
+    <ref> and append to <dest>.
+    It is assumed that <dest> is the product of Procrustean
+    alignment!
+
+    :param ref:  str, reference sequence
+    :param src:  source file stream, read mode, FASTA format
+    :param dest:  destination file stream, 'r+' mode
+    :param aligner:  gotoh2.Aligner() object
+    :return:
+    """
+    prev = {}
+    # iteration moves file pointer to end
+    for h, s in iter_fasta(dest):
+        if len(s) != len(ref):
+            print("Error in update_alignment: length of sequence {} "
+                  "does not match reference.".format(h))
+            sys.exit()
+        prev.update({h: None})
+
+    for h, query in iter_fasta(src):
+        if h in prev:
+            continue
+        aref, aquery, _ = procrust_align(ref, query, aligner)
+        dest.write('>{}\n{}\n'.format(h, aquery))
 
 
 if __name__ == '__main__':
@@ -183,14 +211,18 @@ if __name__ == '__main__':
     parser.add_argument('ref', type=argparse.FileType('r'),
                         help="input, plain text file with reference sequence")
 
-    parser.add_argument('out', required=False, type=argparse.FileType('w'),
-                        help="output, destination file for alignment;"
+    parser.add_argument('--out', '-o', required=False, type=argparse.FileType('w'),
+                        help="output, destination file for alignment; "
                              "defaults to stdout.")
+    parser.add_argument('--append', '-a', required=False,
+                        type=argparse.FileType('r+'),
+                        help="output, open this file in 'r+' (read and append) "
+                             "mode to update with aligned sequences.")
 
-    parser.add_argument('-aa', action='store_true',
-                        help="Inputs and reference are amino acid sequences.")
+    parser.add_argument('--aa', action='store_true',
+                        help="Inputs and reference are amino acid sequences, "
+                             "defaults to nucleotides.")
     parser.add_argument('--codon', action='store_true',
                         help="Codon-wise alignment of nucleotide sequences.")
 
     args = parser.parse_args()
-    
