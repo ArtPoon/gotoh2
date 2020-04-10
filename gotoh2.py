@@ -168,7 +168,7 @@ def codon_align(ref, query, paligner):
     return trimmed, max_score
 
 
-def update_alignment(ref, src, dest, aligner):
+def update_alignment(ref, src, dest, aligner, callback=None):
     """
     Stream sequences from <src> file, check if they are already
     present in <dest> file, and if not do pairwise alignment to
@@ -180,10 +180,12 @@ def update_alignment(ref, src, dest, aligner):
     :param src:  source file stream, read mode, FASTA format
     :param dest:  destination file stream, 'r+' mode
     :param aligner:  gotoh2.Aligner() object
+    :param callback:  optional function for progress monitoring, assumed
+                      to take str (message) argument
     :return:  int, number of sequences transferred to dest
     """
+    # cache headers in current FASTA
     prev = {}
-    # iteration moves file pointer to end
     for h, s in iter_fasta(dest):
         if len(s) != len(ref):
             print("Error in update_alignment: length of sequence {} "
@@ -191,10 +193,14 @@ def update_alignment(ref, src, dest, aligner):
             sys.exit()
         prev.update({h: None})
 
+    # iteration moves file pointer to end
+
     counter = 0
     for h, query in iter_fasta(src):
         if h in prev:
             continue
+        if callback:
+            callback("Aligning new sequence {}".format(h))
         aquery, _, _ = procrust_align(ref, query, aligner)
         dest.write('>{}\n{}\n'.format(h, aquery))
         counter += 1
