@@ -180,7 +180,7 @@ def update_alignment(ref, src, dest, aligner):
     :param src:  source file stream, read mode, FASTA format
     :param dest:  destination file stream, 'r+' mode
     :param aligner:  gotoh2.Aligner() object
-    :return:
+    :return:  int, number of sequences transferred to dest
     """
     prev = {}
     # iteration moves file pointer to end
@@ -191,11 +191,15 @@ def update_alignment(ref, src, dest, aligner):
             sys.exit()
         prev.update({h: None})
 
+    counter = 0
     for h, query in iter_fasta(src):
         if h in prev:
             continue
-        aref, aquery, _ = procrust_align(ref, query, aligner)
+        aquery, _, _ = procrust_align(ref, query, aligner)
         dest.write('>{}\n{}\n'.format(h, aquery))
+        counter += 1
+
+    return counter
 
 
 if __name__ == '__main__':
@@ -226,3 +230,9 @@ if __name__ == '__main__':
                         help="Codon-wise alignment of nucleotide sequences.")
 
     args = parser.parse_args()
+
+    if args.aa:
+        aligner = Aligner(model='EmpHIV25')
+    else:
+        aligner = Aligner()
+
