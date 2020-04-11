@@ -262,7 +262,7 @@ if __name__ == '__main__':
     # load reference sequence
     ref = read_seq(args.ref)
 
-    callback = lambda x: print(x) if args.quiet else None
+    callback = lambda x: None if args.quiet else print(x)
 
     if args.append:
         update_alignment(ref, src=args.infile, dest=args.append,
