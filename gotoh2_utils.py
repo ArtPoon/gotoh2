@@ -197,7 +197,7 @@ def apply_prot_to_nuc(aligned_prot, nuc):
     sequence.
     :param aligned_prot:  str, aligned amino acid sequence
     :param nuc:  str, original nucleotide sequence
-    :return:
+    :return: str, nucleotide sequence with codon gaps
     """
     res = ''
     i = 0

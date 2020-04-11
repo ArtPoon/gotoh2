@@ -208,22 +208,20 @@ def update_alignment(ref, src, dest, aligner, callback=None):
     return counter
 
 
-if __name__ == '__main__':
-    """
-    Command line interface
-    """
+def parse_args():
     parser = argparse.ArgumentParser(
         description="Pairwise sequence alignment utilities for Python"
     )
 
-    parser.add_argument('in', type=argparse.FileType('r'),
+    parser.add_argument('infile', type=argparse.FileType('r'),
                         help="input, FASTA-formatted file")
     parser.add_argument('ref', type=argparse.FileType('r'),
                         help="input, plain text file with reference sequence")
 
-    parser.add_argument('--out', '-o', required=False, type=argparse.FileType('w'),
+    parser.add_argument('--out', '-o', default=sys.stdout, type=argparse.FileType('w'),
                         help="output, destination file for alignment; "
                              "defaults to stdout.")
+
     parser.add_argument('--append', '-a', required=False,
                         type=argparse.FileType('r+'),
                         help="output, open this file in 'r+' (read and append) "
@@ -235,10 +233,47 @@ if __name__ == '__main__':
     parser.add_argument('--codon', action='store_true',
                         help="Codon-wise alignment of nucleotide sequences.")
 
-    args = parser.parse_args()
+    parser.add_argument('--quiet', '-q', action='store_true',
+                        help="Suppress progress monitoring.")
+    parser.add_argument('--threshold', '-t', type=float, default=0,
+                        help="Normalized alignment score cutoff, defaults to 0"
+                             " (no cutoff).")
+    parser.add_argument('--insfile', type=argparse.FileType('w'),
+                        required=False,
+                        help="output, file to record insertions relative to "
+                             "reference.")
 
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    """
+    Command line interface
+    """
+    args = parse_args()
+
+    # initialize Aligner object
     if args.aa:
-        aligner = Aligner(model='EmpHIV25')
+        aligner = Aligner(model='BLOSUM62')
     else:
+        # default nucleotide settings
         aligner = Aligner()
 
+    # load reference sequence
+    ref = read_seq(args.ref)
+
+    callback = lambda x: print(x) if args.quiet else None
+
+    if args.append:
+        update_alignment(ref, src=args.infile, dest=args.append,
+                         aligner=aligner, callback=callback)
+    else:
+        for h, s in iter_fasta(args.infile):
+            trim_seq, inserts, norm_score = procrust_align(ref, s, aligner)
+            if norm_score < args.threshold:
+                continue
+
+            args.out.write('>{}\n{}\n'.format(h, trim_seq))
+            if args.insfile:
+                for pos, nt in inserts:
+                    args.insfile.write('{},{},{}\n'.format(h, pos, nt))
