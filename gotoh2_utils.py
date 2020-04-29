@@ -63,9 +63,9 @@ def iter_fasta(handle):
             if len(sequence) > 0:
                 yield h, sequence
                 sequence = ''
-            h = line.strip('>\n')
+            h = line.lstrip('>').rstrip()
         else:
-            sequence += line.strip('\n').upper()
+            sequence += line.strip().upper()
     yield h, sequence
 
 
