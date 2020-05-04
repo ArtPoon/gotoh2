@@ -221,6 +221,9 @@ def parse_args():
     parser.add_argument('--out', '-o', default=sys.stdout, type=argparse.FileType('w'),
                         help="output, destination file for alignment; "
                              "defaults to stdout.")
+    
+    parser.add_argument('--clean', '-c', action='store_true',
+                        help="removes duplicates from input file.")
 
     parser.add_argument('--append', '-a', required=False,
                         type=argparse.FileType('r+'),
@@ -267,6 +270,16 @@ if __name__ == '__main__':
     if args.append:
         update_alignment(ref, src=args.infile, dest=args.append,
                          aligner=aligner, callback=callback)
+    if args.clean:
+        cleaned = {}
+        
+        for h, s in iter_fasta(args.infile):
+            if h in cleaned:
+                continue
+            else:
+                cleaned.update({h: None})
+                args.out.write('>{}\n{}\n'.format(h, s))
+        
     else:
         for h, s in iter_fasta(args.infile):
             trim_seq, inserts, norm_score = procrust_align(ref, s, aligner)
