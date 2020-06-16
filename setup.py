@@ -10,6 +10,7 @@ setup (name = 'gotoh2',
            'models/HYPHY_NUC.csv',
            'models/NWALIGN.csv',
            'models/Biopp.csv',
+           'models/Biopp2.csv',
            'models/EmpHIV25.csv',
            'models/BLOSUM62.csv'
        ])],
