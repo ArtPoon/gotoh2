@@ -78,7 +78,6 @@ class Aligner():
         return re.sub(pattern='[^%s]' % (self.alphabet,), repl='?', string=seq.upper())
 
     def align(self, seq1, seq2):
-
         """
         Main wrapper function that passes data and parameters to C function.
         :param seq1: First sequence to align.

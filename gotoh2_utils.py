@@ -76,7 +76,7 @@ def convert_fasta(handle):
     :return:  List of [header, sequence] records
     """
     result = []
-    sequence = ''
+    h, sequence = None, ''
     
     for line in handle:
         if line.startswith('$'):  # skip comment
@@ -85,9 +85,9 @@ def convert_fasta(handle):
             if len(sequence) > 0:
                 result.append([h, sequence])
                 sequence = ''
-            h = line.strip('>#\n')
+            h = line.lstrip('>').rstrip()
         else:
-            sequence += line.strip('\n').upper()
+            sequence += line.strip().upper()
 
     result.append([h, sequence])  # handle last entry
     return result
