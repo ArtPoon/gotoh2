@@ -1,5 +1,5 @@
 import unittest
-from gotoh2 import Aligner
+from gotoh2 import Aligner, map_coordinates
 
 
 class TestAligner(unittest.TestCase):
@@ -285,17 +285,36 @@ class TestIssues(TestAligner):
         expected = ('GCA', '-CA', -1)
         self.assertEqual(expected, result)
 
-    @unittest.skip  # this model hasn't been pushed to repo yet
     def test_issue15(self):
         ref = 'ERM'
         query = 'ERM'
         self.g2.is_global = False
         self.g2.set_model('EmpHIV25')
-        self.g2.gap_open_penalty=40
-        self.g2.gap_extend_penalty=10
+        self.g2.gap_open_penalty = 40
+        self.g2.gap_extend_penalty = 10
         result = self.g2.align(ref, query)
         expected = ('ERM', 'ERM', 24)
         self.assertEqual(expected, result)
+
+
+class TestAccessory(TestAligner):
+    def test_coords(self):
+        ref = 'TACGTA'
+        query = 'ACGT'
+        self.g2.is_global = False
+        result = map_coordinates(ref, query, self.g2)
+        expected = {1: 0, 2: 1, 3: 2, 4: 3}
+        self.assertEqual(expected, result)
+
+    def test_coords2(self):
+        ref = 'ACGTACGTACGTACGT'
+        query = 'ACGTACGTACTACGT'
+        self.g2.is_global = True
+        result = map_coordinates(ref, query, self.g2)
+        expected = dict([(i, i) for i in range(10)])
+        expected.update(dict([(i, i-1) for i in range(11, 16)]))
+        self.assertEqual(expected, result)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -134,6 +134,32 @@ def procrust_align(ref, query, aligner):
     return trim_seq, inserts, norm_score
 
 
+def map_coordinates(ref, query, aligner):
+    """
+    Generate a dictionary of query nucleotide coordinates to
+    a reference coordinate system.
+    :param ref:  str, reference sequence
+    :param query:  str, query sequence
+    :param aligner:  gotoh2.Aligner object
+    :return:  dict
+    """
+    aref, aquery, _ = aligner.align(ref, query)
+    qidx, ridx = 0, 0
+    coords = {}
+    for i, rn in enumerate(aref):
+        qn = aquery[i]
+        if rn == '-':
+            qidx += 1  # insertion in query
+        elif qn == '-':
+            ridx += 1  # deletion in query
+        else:
+            coords.update({ridx: qidx})
+            qidx += 1
+            ridx += 1
+    return coords
+
+
+
 def codon_align(ref, query, paligner):
     """
     Codon-aware alignment of query to reference sequence.
