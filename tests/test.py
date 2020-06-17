@@ -296,6 +296,20 @@ class TestIssues(TestAligner):
         expected = ('ERM', 'ERM', 24)
         self.assertEqual(expected, result)
 
+    def test_issue22(self):
+        ref = 'TACGTA'
+        query = 'TACTA'
+
+        # make sure Aligner is configured to default settings
+        self.g2.is_global = False
+        self.g2.gap_open_penalty = 10
+        self.g2.gap_extend_penalty = 1
+        self.g2.set_model('HYPHY_NUC')  # 5 match, -4 mismatch
+
+        result = self.g2.align(ref, query)
+        expected = ('TACGTA', 'TAC-TA', 5+5+5-10-1+5+5)
+        self.assertEqual(expected, result)
+
 
 class TestAccessory(TestAligner):
     def test_coords(self):

@@ -118,6 +118,7 @@ void initialize(struct align_matrices * mx, struct align_settings set) {
     for (i = 0; i < mx->nrows+1; i++) {
         for (j = 0; j < mx->ncols+1; j++) {
             mx->bits[(i * (mx->ncols+1)) + j] = 0;
+
             if (!set.is_global && i == mx->nrows) {
                 mx->bits[(i * (mx->ncols+1)) + j] = 4;
             }
@@ -185,6 +186,10 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
                 mx->R[here] = min3(mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]],
                                    mx->p[here],
                                    mx->q[here]);
+
+                if (!set.is_global && mx->R[here] > 0) {
+                    mx->R[here] = 0;
+                }
             }
 
             if (mx->R[here] == mx->p[here]) {
@@ -523,10 +528,10 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     fprintf(stdout, "\n");
     */
 
-    // TODO: 3. traceback
+    // 3. traceback
     align_score = traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);
 
-    // TODO: decode aligned integer sequences into alphabet sequences
+    // decode aligned integer sequences into alphabet sequences
     o.aligned_seq1 = aligned1;
     o.aligned_seq2 = aligned2;
     //o.alignment_score = -1 * my_matrices.R[(l1+1)*(l2+1)-1];  // FIXME: works for global only!
