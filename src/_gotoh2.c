@@ -186,10 +186,11 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
                 mx->R[here] = min3(mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]],
                                    mx->p[here],
                                    mx->q[here]);
-
+                /*  // see issue #22
                 if (!set.is_global && mx->R[here] > 0) {
                     mx->R[here] = 0;
                 }
+                */
             }
 
             if (mx->R[here] == mx->p[here]) {
