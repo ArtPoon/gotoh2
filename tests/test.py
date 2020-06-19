@@ -272,6 +272,12 @@ class TestIssues(TestAligner):
         expected =  ('A-----', 'ATTTTT', 5)
         self.assertEqual(expected, result)
 
+        # try to find MRE
+        self.g2.gap_open_penalty = 10
+        ref = 'ACGTACG'
+        query = 'TC'
+        self.g2.align(ref, query)
+
 
     def test_issue14(self):
         self.g2.is_global = True
@@ -296,7 +302,7 @@ class TestIssues(TestAligner):
         expected = ('ERM', 'ERM', 24)
         self.assertEqual(expected, result)
 
-    @unittest.skip("commit 65a29a50 causes traceback error")
+    #@unittest.skip("commit 65a29a50 causes traceback error")
     def test_issue22(self):
         ref = 'TACGTA'
         query = 'TACTA'
