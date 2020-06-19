@@ -281,8 +281,9 @@ class TestIssues(TestAligner):
 
         ref = 'ACGTACG'
         query = 'TC'
-        self.g2.align(ref, query)
-
+        result = self.g2.align(ref, query)
+        expected = ('ACGTACG', 'TC-----', 5-4)
+        self.assertEqual(expected, result)
 
     def test_issue14(self):
         self.g2.is_global = True

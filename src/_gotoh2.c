@@ -186,10 +186,6 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
                 mx->R[here] = min3(mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]],
                                    mx->p[here],
                                    mx->q[here]);
-                // see issue #22
-                if (!set.is_global && mx->R[here] > 0) {
-                    mx->R[here] = 0;
-                }
             }
 
             if (mx->R[here] == mx->p[here]) {
@@ -200,6 +196,18 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
             }
             if (i>0 && j>0 && mx->R[here] == mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]]) {
                 mx->bits[here2] |= 4;  // set bit c(m,n) to 1
+            }
+        }
+    }
+
+    // see issue #22
+    if (!set.is_global) {
+        for (i=0; i < mx->nrows; i++) {
+            for (j=0; j < mx->ncols; j++) {
+                here = i*mx->ncols + j;
+                if (mx->R[here] > 0) {
+                    mx->R[here] = 0;
+                }
             }
         }
     }
@@ -501,15 +509,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     /*
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+1) + j]);
-        }
-        fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n");
-
-    for (int i=0; i<l1+2; i++) {
-        for (int j=0; j<l2+2; j++) {
-            fprintf(stdout, "%d ", my_matrices.bits[i*(l2+2) + j]);
+            fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
         }
         fprintf(stdout, "\n");
     }
@@ -518,7 +518,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
 
     edge_assignment(&my_matrices);
 
-    /*
+
     for (int i=0; i<l1+2; i++) {
         for (int j=0; j<l2+2; j++) {
             fprintf(stdout, "%d ", my_matrices.bits[i*(l2+2) + j]);
@@ -526,7 +526,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
         fprintf(stdout, "\n");
     }
     fprintf(stdout, "\n");
-    */
+
 
     // 3. traceback
     align_score = traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);
