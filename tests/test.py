@@ -272,8 +272,13 @@ class TestIssues(TestAligner):
         expected =  ('A-----', 'ATTTTT', 5)
         self.assertEqual(expected, result)
 
+    def test_issue16a(self):
         # try to find MRE
+        self.g2.set_model('HYPHY_NUC')
+        self.g2.is_global = False
         self.g2.gap_open_penalty = 10
+        self.g2.gap_extend_penalty = 1
+
         ref = 'ACGTACG'
         query = 'TC'
         self.g2.align(ref, query)
