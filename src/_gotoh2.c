@@ -1,5 +1,13 @@
+/*
+This is an implementation of Altschul and Erickson's SS-2 algorithm
+for pairwise sequence alignment with affine gap penalties.
+
+Altschul SF, Erickson BW. Optimal sequence alignment using affine
+gap costs. Bulletin of mathematical biology. 1986 Sep 1;48(5-6):
+603-16.
+ */
+
 #include <Python.h>
-//#include "numpy/arrayobject.h"
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
@@ -25,15 +33,15 @@ static PyObject * error_out(PyObject *m) {
 }
 
 
-
 struct align_settings {
-    int is_global;
+    int is_global;  // if >0, penalize terminal gaps
     int v;  // gap opening penalty
     int u;  // gap extension penalty
     int l;  // alphabet length
     const char * alphabet;
     int * d;  // weighting function
 };
+
 
 struct align_matrices {
     int nrows;  // all four matrices have the same dimensions
@@ -51,6 +59,7 @@ struct align_output {
     int alignment_score;
 };
 
+// simple utility function - return minimum of two integers
 int min2(int a, int b) {
     if (a <= b) {
         return (a);
@@ -58,6 +67,7 @@ int min2(int a, int b) {
     return (b);
 }
 
+// return minimum of three integers
 int min3(int a, int b, int c) {
     if (a < b) {
         return min2(a, c);
@@ -518,7 +528,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
 
     edge_assignment(&my_matrices);
 
-
+    /*
     for (int i=0; i<l1+2; i++) {
         for (int j=0; j<l2+2; j++) {
             fprintf(stdout, "%d ", my_matrices.bits[i*(l2+2) + j]);
@@ -526,7 +536,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
         fprintf(stdout, "\n");
     }
     fprintf(stdout, "\n");
-
+    */
 
     // 3. traceback
     align_score = traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);
