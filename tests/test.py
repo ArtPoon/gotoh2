@@ -309,22 +309,22 @@ class TestIssues(TestAligner):
         self.assertEqual(expected, result)
 
     def test_issue22(self):
-        ref = 'CGT'
-        query = 'CT'
+        ref = 'ACGTA'
+        query = 'ACTA'
 
         # make sure Aligner is configured to default settings
         self.g2.is_global = False
-        self.g2.gap_open_penalty = 7
+        self.g2.gap_open_penalty = 10
         self.g2.gap_extend_penalty = 1
         self.g2.set_model('HYPHY_NUC')  # 5 match, -4 mismatch
 
         result = self.g2.align(ref, query)
-        expected = ('CGT', 'C-T', 5-7-1+5)
+        expected = ('ACGTA', 'AC-TA', 5+5-10-1+5+5)
         self.assertEqual(expected, result)
 
-        self.g2.gap_open_penalty = 9
+        self.g2.gap_open_penalty = 8
         result = self.g2.align(ref, query)
-        expected = ('CGT', '-CT', -4+5)
+        expected = ('ACGTA', 'AC-TA', 5+5-8-1+5+5)
         self.assertEqual(expected, result)
 
 

@@ -217,7 +217,7 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
             }
 
             // DEBUGGING
-            /*
+
             fprintf(stdout, "(%d %d)\n", i, j);
             for (int ii=0; ii < mx->nrows+1; ii++) {
                 for (int jj=0; jj < mx->ncols+1; jj++) {
@@ -226,7 +226,7 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
                 fprintf(stdout, "\n");
             }
             fprintf(stdout, "\n");
-            */
+
         }
     }
 
@@ -291,7 +291,7 @@ void edge_assignment(struct align_matrices * mx) {
                 bits[here] &= ~1;  // set a[i,j] to 0
                 bits[here] &= ~(1<<1);  // set b[i,j] to 0
                 bits[here] &= ~(1<<2);  // set c[i,j] to 0
-                //fprintf(stdout, "8: i=%d j=%d set a,b,c to 0\n", i, j);
+                fprintf(stdout, "8: i=%d j=%d set a,b,c to 0\n", i, j);
             }
 
             // step 9. if a[i+1,j] == b[i,j+1] == c[i+1,j+1] == 0
@@ -305,30 +305,30 @@ void edge_assignment(struct align_matrices * mx) {
                     // set d[i+1,j] to 1-e[i,j]
                     if (bits[here]&(1<<4)) {
                         bits[down] &= ~(1<<3); // d to 0
-                        //fprintf(stdout, "10: i=%d j=%d set d(%d,%d) to 0\n", i, j, i+1, j);
+                        fprintf(stdout, "10: i=%d j=%d set d(%d,%d) to 0\n", i, j, i+1, j);
                     } else {
                         bits[down] |= (1<<3); // d to 1
-                        //fprintf(stdout, "10: i=%d j=%d set d(%d,%d) to 1\n", i, j, i+1, j);
+                        fprintf(stdout, "10: i=%d j=%d set d(%d,%d) to 1\n", i, j, i+1, j);
                     }
 
                     // set e[i,j] to 1-a[i,j]
                     if (bits[here]&1) {
                         bits[here] &= ~(1<<4);  // e to 0
-                        //fprintf(stdout, "10: i=%d j=%d set e(%d,%d) to 0\n", i, j, i, j);
+                        fprintf(stdout, "10: i=%d j=%d set e(%d,%d) to 0\n", i, j, i, j);
                     } else {
                         bits[here] |= (1<<4);  // e to 1
-                        //fprintf(stdout, "10: i=%d j=%d set e(%d,%d) to 1\n", i, j, i, j);
+                        fprintf(stdout, "10: i=%d j=%d set e(%d,%d) to 1\n", i, j, i, j);
                     }
 
                     // set a[i,j] to 1
                     bits[here] |= 1;
-                    //fprintf(stdout, "10: i=%d j=%d set a(%d,%d) to 1\n", i, j, i, j);
+                    fprintf(stdout, "10: i=%d j=%d set a(%d,%d) to 1\n", i, j, i, j);
                 } else {
                     // otherwise, set d[i+1,j] and e[i,j] to 0
                     bits[down] &= ~(1<<3);
-                    //fprintf(stdout, "10: i=%d j=%d set d(%d,%d) to 0\n", i, j, i+1, j);
+                    fprintf(stdout, "10: i=%d j=%d set d(%d,%d) to 0\n", i, j, i+1, j);
                     bits[here] &= ~(1<<4);
-                    //fprintf(stdout, "10: i=%d j=%d set e(%d,%d) to 0\n", i, j, i, j);
+                    fprintf(stdout, "10: i=%d j=%d set e(%d,%d) to 0\n", i, j, i, j);
                 }
 
                 // step 11
@@ -337,28 +337,28 @@ void edge_assignment(struct align_matrices * mx) {
                     // set f[i,j+1] to 1-g[i,j]
                     if (bits[here]&(1<<6)) {
                         bits[right] &= ~(1<<5);  // f to 0
-                        //fprintf(stdout, "11: i=%d j=%d set f(%d,%d) to 0\n", i, j, i, j+1);
+                        fprintf(stdout, "11: i=%d j=%d set f(%d,%d) to 0\n", i, j, i, j+1);
                     } else {
                         bits[right] |= (1<<5);  // f to 1
-                        //fprintf(stdout, "11: i=%d j=%d set f(%d,%d) to 1\n", i, j, i, j+1);
+                        fprintf(stdout, "11: i=%d j=%d set f(%d,%d) to 1\n", i, j, i, j+1);
                     }
                     // set g[i,j] to 1-b[i,j]
                     if (bits[here]&(1<<1)) {
                         bits[here] &= ~(1<<6);  // g to 0
-                        //fprintf(stdout, "11: i=%d j=%d set g(%d,%d) to 0\n", i, j, i, j);
+                        fprintf(stdout, "11: i=%d j=%d set g(%d,%d) to 0\n", i, j, i, j);
                     } else {
                         bits[here] |= (1<<6);  // g to 1
-                        //fprintf(stdout, "11: i=%d j=%d set g(%d,%d) to 1\n", i, j, i, j);
+                        fprintf(stdout, "11: i=%d j=%d set g(%d,%d) to 1\n", i, j, i, j);
                     }
                     // set b[i,j] to 1
                     bits[here] |= (1<<1);
-                    //fprintf(stdout, "11: i=%d j=%d set b(%d,%d) to 1\n", i, j, i, j);
+                    fprintf(stdout, "11: i=%d j=%d set b(%d,%d) to 1\n", i, j, i, j);
                 } else {
                     // otherwise set f[i,j+1] and g[i,j] to 0
                     bits[right] &= ~(1<<5);
                     bits[here] &= ~(1<<6);
-                    //fprintf(stdout, "11: i=%d j=%d set f(%d,%d) to 0\n", i, j, i, j+1);
-                    //fprintf(stdout, "11: i=%d j=%d set g(%d,%d) to 0\n", i, j, i, j);
+                    fprintf(stdout, "11: i=%d j=%d set f(%d,%d) to 0\n", i, j, i, j+1);
+                    fprintf(stdout, "11: i=%d j=%d set g(%d,%d) to 0\n", i, j, i, j);
                 }
             }
         }
@@ -546,18 +546,17 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     cost_assignment(sA, sB, &my_matrices, set);
 
     // DEBUGGING - print cost matrix to screen
-    /*
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", my_matrices.q[i*(l2+1) + j]);
+            fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
         }
         fprintf(stdout, "\n");
     }
     fprintf(stdout, "\n");
-    */
+
 
     edge_assignment(&my_matrices);
-    /*
+
     for (int i=0; i<l1+2; i++) {
         for (int j=0; j<l2+2; j++) {
             fprintf(stdout, "%d ", my_matrices.bits[i*(l2+2) + j]);
@@ -565,7 +564,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
         fprintf(stdout, "\n");
     }
     fprintf(stdout, "\n");
-    */
+
 
     // 3. traceback
     align_score = traceback(my_matrices, set, seq1, seq2, aligned1, aligned2);
