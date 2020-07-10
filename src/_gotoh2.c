@@ -102,6 +102,7 @@ void encode_sequence (const char * seq, int * map, int * encoded) {
 
 void initialize(struct align_matrices * mx, struct align_settings set) {
     int i, j;  // row and column counters
+    int here;
     int ix, ix2;  // indices into linearized matrix
     int infty = INT_MAX;  // maximum integer value from limits.h
 
@@ -127,13 +128,14 @@ void initialize(struct align_matrices * mx, struct align_settings set) {
     // zero out bit matrices
     for (i = 0; i < mx->nrows+1; i++) {
         for (j = 0; j < mx->ncols+1; j++) {
-            mx->bits[(i * (mx->ncols+1)) + j] = 0;
+            here = (i * (mx->ncols+1)) + j;
+            mx->bits[here] = 0;
 
             if (!set.is_global && i == mx->nrows) {
-                mx->bits[(i * (mx->ncols+1)) + j] = 4;
+                mx->bits[here] = 4;
             }
             if (!set.is_global && j == mx->ncols) {
-                mx->bits[(i * (mx->ncols+1)) + j] = 4;
+                mx->bits[here] = 4;
             }
         }
     }
@@ -148,21 +150,26 @@ void initialize(struct align_matrices * mx, struct align_settings set) {
 void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_settings set) {
     int i, j;  // row and column counters
     int here, up, left, diag;  // cache indices for linearized matrix
-    int here2, up2, left2;
+    int here2, up2, left2, cxy = 0;
 
     for (i=0; i < mx->nrows; i++) {
         for (j=0; j < mx->ncols; j++) {
-
-            here = i*mx->ncols + j;
-            up = here - mx->ncols;
-            left = here - 1;
-            diag = up - 1;
+            here = i*mx->ncols + j;  // (i, j)
+            up = here - mx->ncols;   // (i-1, j)
+            left = here - 1;         // (i, j-1)
+            diag = up - 1;           // (i-1, j-1)
 
             // bits matrix has different indices
-            here2 = i*(mx->ncols+1) + j;
+            here2 = i*(mx->ncols+1) + j;  // (i, j) in bit matrix
             up2 = here2 - (mx->ncols+1);
             left2 = here2 - 1;
 
+            // cost of no gap (align bases together)
+            if (i > 0 && j > 0) {
+                cxy = set.d[ a[i-1]*set.l + b[j-1] ];
+            }
+
+            // find minimum cost of path ending at (i,j) and using V-edge
             if (i > 0) {
                 mx->p[here] = set.u + min2(mx->p[up], mx->R[up]+set.v);
                 if (mx->p[here] == mx->p[up] + set.u) {
@@ -173,6 +180,7 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
                 }
             }
 
+            // find minimum cost of path ending at (i,j) and using H-edge
             if (j > 0) {
                 mx->q[here] = set.u + min2(mx->q[left], mx->R[left]+set.v);
                 if (mx->q[here] == mx->q[left] + set.u) {
@@ -193,20 +201,32 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
                     }
                 }
             } else {
-                mx->R[here] = min3(mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]],
+                mx->R[here] = min3(mx->R[diag] - cxy,
                                    mx->p[here],
                                    mx->q[here]);
             }
 
             if (mx->R[here] == mx->p[here]) {
-                mx->bits[here2] |= 1;  // set bit a(m,n) to 1
+                mx->bits[here2] |= 1;  // set bit a(i,j) to 1
             }
             if (mx->R[here] == mx->q[here]) {
-                mx->bits[here2] |= 2;  // set bit b(m,n) to 1
+                mx->bits[here2] |= 2;  // set bit b(i,j) to 1
             }
-            if (i>0 && j>0 && mx->R[here] == mx->R[diag] - set.d[a[i-1]*set.l+b[j-1]]) {
-                mx->bits[here2] |= 4;  // set bit c(m,n) to 1
+            if (i>0 && j>0 && mx->R[here] == (mx->R[diag] - cxy)) {
+                mx->bits[here2] |= 4;  // set bit c(i,j) to 1
             }
+
+            // DEBUGGING
+            /*
+            fprintf(stdout, "(%d %d)\n", i, j);
+            for (int ii=0; ii < mx->nrows+1; ii++) {
+                for (int jj=0; jj < mx->ncols+1; jj++) {
+                    fprintf(stdout, "%d ", mx->bits[ii*(mx->ncols+1) + jj]);
+                }
+                fprintf(stdout, "\n");
+            }
+            fprintf(stdout, "\n");
+            */
         }
     }
 
@@ -226,9 +246,19 @@ void cost_assignment(int * a, int * b, struct align_matrices * mx, struct align_
 
 // steps 8 through 11 inclusive of Altschul-Erickson algorithm
 void edge_assignment(struct align_matrices * mx) {
-    // bits: linearized matrix storing traceback bits (dimension nrows+1 x ncols+1)
-    //    e.g.,   0010010 = 18
-    //            gfedcba
+    /*
+    bits: linearized matrix storing traceback bits (dimension nrows+1 x ncols+1)
+        e.g.,   0010010 = 18
+                gfedcba
+    After edge assignment:
+        a: an optimal path uses up step
+        b:  "  "       "    "   left step
+        c:  "  "       "    "   up-left step
+        d: if a=1, optimal path also uses up step from below
+        e: if a=1,  "       "    "    "    "  "   to above
+        f: if b=1, optimal path also uses left step from right
+        g: if b=1,  "       "    "    "    "    "   to left
+    */
     int i, j;  // row, column indices
     int here, down, right, diag;  // indices into linearized arrays
     int nrows = mx->nrows,
@@ -519,7 +549,7 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     /*
     for (int i=0; i<l1+1; i++) {
         for (int j=0; j<l2+1; j++) {
-            fprintf(stdout, "%d ", my_matrices.R[i*(l2+1) + j]);
+            fprintf(stdout, "%d ", my_matrices.q[i*(l2+1) + j]);
         }
         fprintf(stdout, "\n");
     }
@@ -527,7 +557,6 @@ struct align_output align(const char * seq1, const char * seq2, struct align_set
     */
 
     edge_assignment(&my_matrices);
-
     /*
     for (int i=0; i<l1+2; i++) {
         for (int j=0; j<l2+2; j++) {
